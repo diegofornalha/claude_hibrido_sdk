@@ -13,7 +13,7 @@ interface ChatSession {
 }
 
 @Component({
-  selector: 'app-diagnostico-recents',
+  selector: 'app-CRM-recents',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [RouterLink, SkeletonComponent],
   template: `
@@ -34,7 +34,7 @@ interface ChatSession {
               </div>
             </div>
             <a
-              [routerLink]="'/' + userId() + '/diagnostico'"
+              [routerLink]="'/' + userId() + '/CRM'"
               class="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition flex items-center gap-2"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -59,7 +59,7 @@ interface ChatSession {
               <p class="text-xl font-medium mb-2">Nenhum diagnóstico ainda</p>
               <p class="text-gray-400 mb-6">Comece seu primeiro diagnóstico profissional</p>
               <a
-                [routerLink]="'/' + userId() + '/diagnostico'"
+                [routerLink]="'/' + userId() + '/CRM'"
                 class="inline-block px-6 py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition"
               >
                 Fazer Diagnóstico
@@ -119,7 +119,7 @@ interface ChatSession {
     </div>
   `
 })
-export class DiagnosticoRecents implements OnInit {
+export class CRMRecents implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
   private readonly authService = inject(AuthService);
@@ -136,7 +136,7 @@ export class DiagnosticoRecents implements OnInit {
     this.loading.set(true);
 
     this.http.get<{ success?: boolean; status?: string; sessions?: ChatSession[]; data?: ChatSession[] }>(
-      `${environment.apiUrl}/api/diagnostico/sessions`
+      `${environment.apiUrl}/api/CRM/sessions`
     ).subscribe({
       next: (response) => {
         const data = response.sessions || response.data || [];
@@ -155,13 +155,13 @@ export class DiagnosticoRecents implements OnInit {
   }
 
   openSession(sessionId: string): void {
-    this.router.navigate(['/', this.userId(), 'diagnostico', sessionId]);
+    this.router.navigate(['/', this.userId(), 'CRM', sessionId]);
   }
 
   deleteSession(sessionId: string, event: Event): void {
     event.stopPropagation();
 
-    this.http.delete(`${environment.apiUrl}/api/diagnostico/sessions/${sessionId}`).subscribe({
+    this.http.delete(`${environment.apiUrl}/api/CRM/sessions/${sessionId}`).subscribe({
       next: () => {
         this.sessions.update(sessions =>
           sessions.filter(s => s.session_id !== sessionId)

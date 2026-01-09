@@ -89,8 +89,8 @@ export class WebSocketChatService {
   // Target user (para admin visualizar chat de outro usuário)
   readonly targetUserId = signal<number | null>(null);
 
-  // Base path para URLs (chat ou diagnostico)
-  readonly basePath = signal<'chat' | 'diagnostico'>('chat');
+  // Base path para URLs (chat ou CRM)
+  readonly basePath = signal<'chat' | 'CRM'>('chat');
 
   // Admin mode - usa /admin/chat em vez de /{userId}/chat
   readonly adminMode = signal(false);
@@ -315,7 +315,7 @@ export class WebSocketChatService {
     const payload = {
       message: content.trim(),
       conversation_id: this.conversationId(),
-      mode: this.basePath()  // 'chat' ou 'diagnostico'
+      mode: this.basePath()  // 'chat' ou 'CRM'
     };
 
     this.ws.send(JSON.stringify(payload));

@@ -245,8 +245,8 @@ type TabType = 'info' | 'activity' | 'permissions';
                           <div class="text-2xl font-bold text-emerald-800">{{ userData()!.extra?.chat_count || 0 }}</div>
                         </div>
                         <div class="p-4 bg-emerald-50 rounded-lg">
-                          <div class="text-sm text-emerald-600">Diagnosticos</div>
-                          <div class="text-2xl font-bold text-emerald-800">{{ userData()!.extra?.diagnostico_count || 0 }}</div>
+                          <div class="text-sm text-emerald-600">CRMs</div>
+                          <div class="text-2xl font-bold text-emerald-800">{{ userData()!.extra?.CRM_count || 0 }}</div>
                         </div>
                       </div>
 

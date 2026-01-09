@@ -15,14 +15,14 @@ from typing import Optional, Any
 import libsql_experimental as libsql
 
 # Claude Agent SDK
-SDK_PATH = "/home/diagnostico/diagnostico_nanda/claude-agent-sdk-python/src"
+SDK_PATH = "/home/CRM/CRM_nanda/claude-agent-sdk-python/src"
 if SDK_PATH not in sys.path:
     sys.path.insert(0, SDK_PATH)
 
 # Configuração
 DATABASE_PATH = os.getenv(
     "TURSO_DATABASE_PATH",
-    "/home/diagnostico/.turso/databases/crm.db"
+    "/home/CRM/.turso/databases/crm.db"
 )
 
 # System Prompt do Orquestrador
@@ -39,8 +39,8 @@ Você é o agente central de um CRM inteligente para gestão de leads e vendas.
 
 ## ESTADOS DO LEAD
 - novo: Acabou de entrar
-- diagnostico_pendente: Aguardando agendamento
-- diagnostico_agendado: Call marcada
+- CRM_pendente: Aguardando agendamento
+- CRM_agendado: Call marcada
 - em_atendimento: Em processo de venda/nutrição
 - proposta_enviada: Proposta enviada
 - negociacao: Em negociação
@@ -54,7 +54,7 @@ Você é o agente central de um CRM inteligente para gestão de leads e vendas.
 ### Evento: new_lead
 1. Criar lead_state como "novo"
 2. Calcular score/temperatura
-3. Se score >= 70: estado → "diagnostico_pendente", criar task "agendar_reuniao"
+3. Se score >= 70: estado → "CRM_pendente", criar task "agendar_reuniao"
 4. Se score < 70: estado → "em_atendimento", criar task "ligar" ou "enviar_material"
 5. Registrar evento
 
@@ -66,7 +66,7 @@ Você é o agente central de um CRM inteligente para gestão de leads e vendas.
 5. Atualizar estado
 
 ### Evento: meeting_scheduled
-1. Atualizar estado → "diagnostico_agendado"
+1. Atualizar estado → "CRM_agendado"
 2. Criar task de preparação
 3. Registrar evento
 
@@ -204,7 +204,7 @@ class CRMOrchestrator:
 
         if score >= 70:
             # Lead quente - agendar diagnóstico
-            new_state = "diagnostico_pendente"
+            new_state = "CRM_pendente"
             task_type = "agendar_reuniao"
             task_priority = "high"
             ai_recommendation = "Lead quente! Agendar diagnóstico o mais rápido possível."
@@ -332,8 +332,8 @@ class CRMOrchestrator:
             return result
 
         # 1. Atualizar estado
-        self._update_lead_state(lead_id, "diagnostico_agendado")
-        result["lead_state"] = "diagnostico_agendado"
+        self._update_lead_state(lead_id, "CRM_agendado")
+        result["lead_state"] = "CRM_agendado"
         result["actions_taken"].append("state_updated")
 
         # 2. Criar task de preparação

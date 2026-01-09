@@ -295,7 +295,7 @@ export class OrganizationSettings implements OnInit {
     { key: 'view_team', label: 'Ver Equipe', description: 'Visualizar dados da equipe' },
     { key: 'manage_clients', label: 'Gerenciar Clientes', description: 'Gerenciar clientes e mentorados' },
     { key: 'chat', label: 'Chat', description: 'Acesso ao chat de conversa livre com IA' },
-    { key: 'diagnostico', label: 'Diagnostico', description: 'Acesso ao modulo de diagnostico profissional' },
+    { key: 'CRM', label: 'CRM', description: 'Acesso ao modulo de CRM profissional' },
   ];
 
   levelForm = {

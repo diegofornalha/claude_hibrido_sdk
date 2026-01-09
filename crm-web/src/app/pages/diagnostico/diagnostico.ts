@@ -14,7 +14,7 @@ import {
 } from '../../core/components/chat';
 
 @Component({
-  selector: 'app-diagnostico',
+  selector: 'app-CRM',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     RouterLink,
@@ -31,8 +31,8 @@ import {
         [config]="headerConfig()"
         [isConnected]="chatService.isConnected()"
         [showHistory]="chatService.showHistory()"
-        historyTitle="Historico de Diagnosticos"
-        newSessionTitle="Novo Diagnostico"
+        historyTitle="Historico de CRMs"
+        newSessionTitle="Novo CRM"
         (historyClicked)="toggleHistory()"
         (newSessionClicked)="newDiagnostic()"
       />
@@ -45,9 +45,9 @@ import {
         [currentSessionId]="chatService.conversationId()"
         [historyTitle]="config.historyTitle"
         [emptyText]="config.historyEmptyText"
-        defaultSessionTitle="Novo diagnostico"
-        deleteTitle="Apagar diagnostico"
-        deleteConfirmText="Tem certeza que deseja apagar este diagnostico?"
+        defaultSessionTitle="Novo CRM"
+        deleteTitle="Apagar CRM"
+        deleteConfirmText="Tem certeza que deseja apagar este CRM?"
         (sessionSelected)="loadDiagnosticSession($event)"
         (sessionDeleted)="deleteSession($event)"
         (closed)="closeHistory()"
@@ -61,11 +61,11 @@ import {
         (toggleMinimized)="toggleToolsMinimized()"
       />
 
-      <!-- Barra de Progresso do Diagnostico -->
+      <!-- Barra de Progresso do CRM -->
       <div class="bg-white border-b border-gray-200 px-4 py-3">
         <div class="max-w-4xl mx-auto">
           @if (progressService.isGenerating()) {
-            <!-- Estado: Gerando diagnostico -->
+            <!-- Estado: Gerando CRM -->
             <div class="flex flex-col items-center justify-center gap-2 py-2">
               <div class="flex items-center gap-3">
                 <div class="flex gap-1">
@@ -73,7 +73,7 @@ import {
                   <div class="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style="animation-delay: 150ms"></div>
                   <div class="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style="animation-delay: 300ms"></div>
                 </div>
-                <span class="text-purple-600 font-medium">Gerando seu diagnostico...</span>
+                <span class="text-purple-600 font-medium">Gerando seu CRM...</span>
               </div>
               <span class="text-purple-400 text-sm">Aguarde enquanto analisamos suas respostas</span>
             </div>
@@ -81,14 +81,14 @@ import {
               <div class="bg-purple-600 h-2 rounded-full animate-pulse w-full"></div>
             </div>
           } @else if (progressService.isSaved()) {
-            <!-- Estado: Diagnostico salvo -->
+            <!-- Estado: CRM salvo -->
             <div class="flex items-center justify-center gap-2 py-2">
               <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
               </svg>
-              <span class="text-green-600 font-medium">Diagnostico concluido!</span>
+              <span class="text-green-600 font-medium">CRM concluido!</span>
               <a
-                [routerLink]="'/' + userId() + '/diagnostico/recents'"
+                [routerLink]="'/' + userId() + '/CRM/recents'"
                 class="ml-2 text-purple-600 hover:underline text-sm"
               >
                 Ver historico
@@ -104,7 +104,7 @@ import {
                 @if (progressService.progress() === 0) {
                   Pronto para iniciar
                 } @else {
-                  Diagnostico em andamento
+                  CRM em andamento
                 }
               </span>
               <span class="text-sm text-purple-600 font-semibold">{{ progressService.progress() }}%</span>
@@ -147,7 +147,7 @@ import {
     </div>
   `
 })
-export class Diagnostico extends ChatPageBase {
+export class CRM extends ChatPageBase {
   readonly progressService = inject(DiagnosticProgressService);
 
   // UserId para construir rotas
@@ -163,23 +163,23 @@ export class Diagnostico extends ChatPageBase {
     gradient: true
   }));
 
-  // Configuracao do diagnostico
+  // Configuracao do CRM
   readonly config: ChatPageConfig = {
-    basePath: 'diagnostico',
+    basePath: 'CRM',
     header: {
-      title: 'Diagnostico Profissional',
+      title: 'CRM Profissional',
       subtitle: 'Avaliacao das 7 areas do seu negocio',
       backRoute: '/dashboard',
       gradient: true
     },
-    historyTitle: 'Historico de Diagnosticos',
-    historyEmptyText: 'Nenhum diagnostico ainda',
-    emptyStateTitle: 'Diagnostico Profissional',
+    historyTitle: 'Historico de CRMs',
+    historyEmptyText: 'Nenhum CRM ainda',
+    emptyStateTitle: 'CRM Profissional',
     emptyStateDescription: 'Vamos avaliar as 7 areas do seu negocio para criar um plano de acao personalizado',
     suggestions: [
-      'Quero fazer meu diagnostico profissional',
+      'Quero fazer meu CRM profissional',
       'Continuar de onde parei',
-      'Ver meu ultimo diagnostico'
+      'Ver meu ultimo CRM'
     ]
   };
 
@@ -200,19 +200,19 @@ export class Diagnostico extends ChatPageBase {
   }
 
   protected override getNewSessionRoute(): string {
-    return '/' + this.userId() + '/diagnostico';
+    return '/' + this.userId() + '/CRM';
   }
 
-  // Metodo especifico para novo diagnostico (sem navegar)
+  // Metodo especifico para novo CRM (sem navegar)
   newDiagnostic(): void {
     this.chatService.newSession();
     this.scrollTargetIdx.set(null);
-    this.router.navigate(['/', this.userId(), 'diagnostico']);
+    this.router.navigate(['/', this.userId(), 'CRM']);
   }
 
   // Metodo especifico para carregar sessao com atualizacao de URL
   loadDiagnosticSession(sessionId: string): void {
     this.chatService.loadSession(sessionId);
-    this.router.navigate(['/', this.userId(), 'diagnostico', sessionId]);
+    this.router.navigate(['/', this.userId(), 'CRM', sessionId]);
   }
 }

@@ -1,7 +1,7 @@
 [project]
 name = "crm-backend"
 version = "1.0.0"
-description = "Backend do sistema de diagnostico CRM"
+description = "Backend do Sistema de CRM CRM"
 requires-python = ">=3.11"
 
 [tool.pytest.ini_options]

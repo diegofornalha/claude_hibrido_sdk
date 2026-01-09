@@ -442,8 +442,8 @@ export class LeadDetail implements OnInit {
 
   readonly availableStates: LeadState[] = [
     'novo',
-    'diagnostico_pendente',
-    'diagnostico_agendado',
+    'CRM_pendente',
+    'CRM_agendado',
     'em_atendimento',
     'proposta_enviada',
     'produto_vendido',

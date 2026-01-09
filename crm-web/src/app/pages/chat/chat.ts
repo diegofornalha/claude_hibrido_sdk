@@ -106,7 +106,7 @@ export class Chat extends ChatPageBase {
     emptyStateDescription: 'Comece uma conversa com seu assistente pessoal',
     suggestions: [
       'O que voce sabe sobre mim?',
-      'Quero fazer meu diagnostico profissional',
+      'Quero fazer meu CRM profissional',
       'Quantos mentorados tem cadastrados?',
       'Mostre minhas ultimas conversas'
     ]

@@ -5,8 +5,8 @@
 
 export type LeadState =
   | 'novo'
-  | 'diagnostico_pendente'
-  | 'diagnostico_agendado'
+  | 'CRM_pendente'
+  | 'CRM_agendado'
   | 'em_atendimento'
   | 'proposta_enviada'
   | 'produto_vendido'
@@ -60,13 +60,13 @@ export const LEAD_STATE_CONFIG: Record<LeadState, LeadStateConfig> = {
     bgClass: 'bg-blue-100',
     textClass: 'text-blue-700'
   },
-  diagnostico_pendente: {
+  CRM_pendente: {
     label: 'Aguardando',
     emoji: '',
     bgClass: 'bg-yellow-100',
     textClass: 'text-yellow-700'
   },
-  diagnostico_agendado: {
+  CRM_agendado: {
     label: 'Agendado',
     emoji: '',
     bgClass: 'bg-purple-100',

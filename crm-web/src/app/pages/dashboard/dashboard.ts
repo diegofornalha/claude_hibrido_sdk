@@ -42,7 +42,7 @@ import { SkeletonComponent } from '../../core/components/skeleton.component';
           <div class="grid grid-cols-3 gap-4">
 
             <a
-              [routerLink]="'/' + userId() + '/diagnostico'"
+              [routerLink]="'/' + userId() + '/CRM'"
               class="flex items-center gap-4 p-6 bg-gradient-to-br from-purple-50 to-purple-100 border-2 border-purple-200 rounded-xl hover:shadow-lg hover:border-purple-400 transition"
             >
               <svg class="w-10 h-10 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -76,7 +76,7 @@ import { SkeletonComponent } from '../../core/components/skeleton.component';
               </svg>
               <div>
                 <div class="font-bold text-emerald-900 text-lg">Historico</div>
-                <div class="text-sm text-emerald-700">Meus diagnosticos</div>
+                <div class="text-sm text-emerald-700">Meus CRMs</div>
               </div>
             </a>
           </div>
@@ -96,12 +96,12 @@ import { SkeletonComponent } from '../../core/components/skeleton.component';
               Histórico ({{ diagnosisService.chatSessions().length }})
             </button>
             <button
-              (click)="activeTab.set('diagnosticos')"
+              (click)="activeTab.set('CRMs')"
               class="flex-1 px-4 py-4 text-center font-medium transition"
-              [class.bg-emerald-50]="activeTab() === 'diagnosticos'"
-              [class.text-emerald-600]="activeTab() === 'diagnosticos'"
-              [class.border-b-2]="activeTab() === 'diagnosticos'"
-              [class.border-emerald-600]="activeTab() === 'diagnosticos'"
+              [class.bg-emerald-50]="activeTab() === 'CRMs'"
+              [class.text-emerald-600]="activeTab() === 'CRMs'"
+              [class.border-b-2]="activeTab() === 'CRMs'"
+              [class.border-emerald-600]="activeTab() === 'CRMs'"
             >
               Diagnósticos ({{ diagnosisService.assessments().length }})
             </button>
@@ -208,7 +208,7 @@ import { SkeletonComponent } from '../../core/components/skeleton.component';
               }
 
               <!-- Aba Diagnósticos -->
-              @if (activeTab() === 'diagnosticos') {
+              @if (activeTab() === 'CRMs') {
                 @if (diagnosisService.assessments().length === 0) {
                   <div class="text-center py-12 text-gray-500">
                     <div class="text-6xl mb-4">📋</div>
@@ -301,7 +301,7 @@ export class Dashboard implements OnInit {
   );
   readonly latestScore = signal<number | null>(null);
   readonly hasProfile = signal(false);
-  readonly activeTab = signal<'fontes' | 'diagnosticos' | 'planos'>('fontes');
+  readonly activeTab = signal<'fontes' | 'CRMs' | 'planos'>('fontes');
   readonly latestActionPlan = signal<string | null>(null);
   readonly expandedChat = signal<string | null>(null);
   readonly chatMessages = signal<any[]>([]);

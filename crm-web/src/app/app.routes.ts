@@ -48,18 +48,18 @@ export const routes: Routes = [
         canActivate: [roleGuard(['mentorado', 'mentor', 'admin'])]
       },
       {
-        path: 'diagnostico',
-        loadComponent: () => import('./pages/diagnostico/diagnostico').then(m => m.Diagnostico),
+        path: 'CRM',
+        loadComponent: () => import('./pages/CRM/CRM').then(m => m.CRM),
         canActivate: [roleGuard(['mentorado', 'mentor', 'admin'])]
       },
       {
-        path: 'diagnostico/recents',
-        loadComponent: () => import('./pages/diagnostico/diagnostico-recents').then(m => m.DiagnosticoRecents),
+        path: 'CRM/recents',
+        loadComponent: () => import('./pages/CRM/CRM-recents').then(m => m.CRMRecents),
         canActivate: [roleGuard(['mentorado', 'mentor', 'admin'])]
       },
       {
-        path: 'diagnostico/:sessionId',
-        loadComponent: () => import('./pages/diagnostico/diagnostico').then(m => m.Diagnostico),
+        path: 'CRM/:sessionId',
+        loadComponent: () => import('./pages/CRM/CRM').then(m => m.CRM),
         canActivate: [roleGuard(['mentorado', 'mentor', 'admin'])]
       },
       {

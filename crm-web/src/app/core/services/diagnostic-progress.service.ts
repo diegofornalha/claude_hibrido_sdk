@@ -11,7 +11,7 @@ interface DiagnosticArea {
 export class DiagnosticProgressService {
   private readonly chatService = inject(WebSocketChatService);
 
-  // Areas do diagnostico na ordem correta
+  // Areas do CRM na ordem correta
   readonly diagnosticAreas: DiagnosticArea[] = [
     { key: 'vendas', name: 'Vendas', keywords: ['vendas', 'venda', 'precificacao', 'preco', 'ticket', 'faturamento', 'primeira area', '1a area'] },
     { key: 'cliente', name: 'Cliente', keywords: ['cliente', 'proposta de valor', 'posicionamento', 'segunda area', '2a area'] },
@@ -55,13 +55,13 @@ export class DiagnosticProgressService {
   // Area atual sendo avaliada
   readonly currentArea = computed(() => {
     const completed = this.areasCompleted();
-    if (completed >= 7) return 'Diagnostico completo!';
+    if (completed >= 7) return 'CRM completo!';
     if (completed === 0) return 'Aguardando inicio';
 
     return `Avaliando: ${this.diagnosticAreas[Math.min(completed, 6)].name}`;
   });
 
-  // Detecta se o diagnostico foi salvo (ferramenta save_diagnosis chamada)
+  // Detecta se o CRM foi salvo (ferramenta save_diagnosis chamada)
   readonly isSaved = computed(() => {
     const messages = this.chatService.messages();
     if (messages.length === 0) return false;
@@ -74,13 +74,13 @@ export class DiagnosticProgressService {
       .join(' ');
 
     // Detecta frases especificas de conclusao
-    return lastAssistantMessages.includes('diagnostico salvo') ||
-           lastAssistantMessages.includes('seu diagnostico esta pronto') ||
+    return lastAssistantMessages.includes('CRM salvo') ||
+           lastAssistantMessages.includes('seu CRM esta pronto') ||
            lastAssistantMessages.includes('**seu plano de acao') ||
            lastAssistantMessages.includes('cobrimos todas as areas');
   });
 
-  // Verifica se esta gerando o diagnostico (100% mas ainda nao salvo)
+  // Verifica se esta gerando o CRM (100% mas ainda nao salvo)
   readonly isGenerating = computed(() => {
     return this.progress() >= 100 && !this.isSaved();
   });

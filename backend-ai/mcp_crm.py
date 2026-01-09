@@ -16,14 +16,14 @@ import libsql_experimental as libsql
 from mcp.server.fastmcp import FastMCP
 
 # Adicionar Claude Agent SDK ao path
-SDK_PATH = "/home/diagnostico/diagnostico_nanda/claude-agent-sdk-python/src"
+SDK_PATH = "/home/CRM/CRM_nanda/claude-agent-sdk-python/src"
 if SDK_PATH not in sys.path:
     sys.path.insert(0, SDK_PATH)
 
 # Configuração do banco
 DATABASE_PATH = os.getenv(
     "TURSO_DATABASE_PATH",
-    "/home/diagnostico/.turso/databases/crm.db"
+    "/home/CRM/.turso/databases/crm.db"
 )
 
 mcp = FastMCP("crm-crm")
@@ -86,7 +86,7 @@ def update_lead_state(
 
     Args:
         lead_id: ID do lead
-        new_state: Novo estado (novo, diagnostico_pendente, diagnostico_agendado,
+        new_state: Novo estado (novo, CRM_pendente, CRM_agendado,
                    em_atendimento, proposta_enviada, negociacao, produto_vendido,
                    followup_ativo, perdido, reativacao)
         owner_team: Time responsável (marketing, vendas, suporte)
@@ -158,7 +158,7 @@ def list_leads_by_state(state: str, limit: int = 50) -> dict:
     Lista leads por estado no funil.
 
     Args:
-        state: Estado a filtrar (novo, diagnostico_pendente, etc.)
+        state: Estado a filtrar (novo, CRM_pendente, etc.)
         limit: Número máximo de resultados
 
     Returns:
@@ -466,7 +466,7 @@ def schedule_meeting(
 
     Args:
         lead_id: ID do lead
-        meeting_type: Tipo (diagnostico, apresentacao, negociacao, followup, suporte)
+        meeting_type: Tipo (CRM, apresentacao, negociacao, followup, suporte)
         scheduled_at: Data/hora agendada (ISO 8601)
         title: Título da reunião
         duration_minutes: Duração em minutos (default 30)
@@ -501,10 +501,10 @@ def schedule_meeting(
     }), meeting_id))
 
     # Atualizar estado do lead se for diagnóstico
-    if meeting_type == "diagnostico":
+    if meeting_type == "CRM":
         conn.execute("""
             UPDATE crm_lead_state
-            SET current_state = 'diagnostico_agendado', state_updated_at = ?
+            SET current_state = 'CRM_agendado', state_updated_at = ?
             WHERE lead_id = ?
         """, (datetime.now().isoformat(), lead_id))
 
@@ -1183,7 +1183,7 @@ def save_diagnosis_human(
     Args:
         lead_id: ID do lead
         meeting_id: ID da reunião/call onde foi coletado
-        diagnosed_by_user_id: ID de quem diagnosticou (CRM)
+        diagnosed_by_user_id: ID de quem CRMu (CRM)
         deep_pains: Lista de dores profundas identificadas
         real_barriers: Lista de barreiras reais (tempo, dinheiro, etc)
         emotional_profile: Perfil emocional (ansioso, decidido, inseguro, etc)
@@ -1544,14 +1544,14 @@ def capture_lead_from_typeform(
         # Criar entrada se não existe
         conn.execute("""
             INSERT INTO crm_lead_state (lead_id, current_state, state_updated_at, owner_team)
-            VALUES (?, 'diagnostico_pendente', ?, 'vendas')
+            VALUES (?, 'CRM_pendente', ?, 'vendas')
         """, (user_id, now))
 
     notes_data["typeform_data"] = typeform_payload
 
     conn.execute("""
         UPDATE crm_lead_state
-        SET current_state = 'diagnostico_pendente',
+        SET current_state = 'CRM_pendente',
             state_updated_at = ?,
             owner_team = 'vendas',
             notes = ?
@@ -1573,7 +1573,7 @@ def capture_lead_from_typeform(
         "user_id": user_id,
         "nome": lead_name,
         "email": email,
-        "current_state": "diagnostico_pendente",
+        "current_state": "CRM_pendente",
         "event_id": event_id,
         "message": f"Typeform recebido! Lead {lead_name} pronto para agendamento de diagnóstico."
     }

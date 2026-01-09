@@ -13,7 +13,7 @@ import { AuthService } from '../../core/services/auth.service';
         <div class="bg-white rounded-2xl shadow-xl p-8">
           <div class="text-center mb-8">
             <h1 class="text-3xl font-bold text-emerald-600 mb-2">CRM</h1>
-            <p class="text-gray-500">Sistema de Diagnostico </p>
+            <p class="text-gray-500">Sistema de CRM </p>
           </div>
 
           <form [formGroup]="form" (ngSubmit)="onSubmit()" class="space-y-6">

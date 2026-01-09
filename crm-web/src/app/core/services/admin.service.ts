@@ -49,9 +49,9 @@ export class AdminService {
         total_users: (response.data?.total_mentors || 0) + (response.data?.total_mentorados || 0),
         total_mentors: response.data?.total_mentors || 0,
         total_mentorados: response.data?.total_mentorados || 0,
-        total_assessments: response.data?.total_diagnosticos || 0,
+        total_assessments: response.data?.total_CRMs || 0,
         average_score: response.data?.media_score_geral || 0,
-        assessments_this_month: response.data?.diagnosticos_este_mes || 0,
+        assessments_this_month: response.data?.CRMs_este_mes || 0,
         top_mentores: response.data?.top_mentores || []
       }))
     );

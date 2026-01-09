@@ -66,7 +66,7 @@ export interface LevelUserExtra {
 
   // Para mentorados (nivel 4)
   chat_count?: number;
-  diagnostico_count?: number;
+  CRM_count?: number;
   recent_sessions?: ChatSession[];
 
   // Para admin/mentor (nivel 0-3)

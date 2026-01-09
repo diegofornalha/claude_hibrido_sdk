@@ -5,7 +5,7 @@ import { AuthService } from '../../services/auth.service';
 import { ChatHeaderConfig } from './chat-header.component';
 
 export interface ChatPageConfig {
-  basePath: 'chat' | 'diagnostico' | 'admin';
+  basePath: 'chat' | 'CRM' | 'admin';
   header: ChatHeaderConfig;
   historyTitle: string;
   historyEmptyText: string;
@@ -14,7 +14,7 @@ export interface ChatPageConfig {
   suggestions: string[];
 }
 
-type ServiceBasePath = 'chat' | 'diagnostico';
+type ServiceBasePath = 'chat' | 'CRM';
 
 @Directive()
 export abstract class ChatPageBase implements OnInit, OnDestroy {
@@ -32,7 +32,7 @@ export abstract class ChatPageBase implements OnInit, OnDestroy {
   abstract readonly config: ChatPageConfig;
 
   ngOnInit(): void {
-    // Definir basePath apenas para chat e diagnostico (admin usa adminMode)
+    // Definir basePath apenas para chat e CRM (admin usa adminMode)
     if (this.config.basePath !== 'admin') {
       this.chatService.basePath.set(this.config.basePath as ServiceBasePath);
     }
