@@ -31,36 +31,19 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 # from fastapi_mcp import FastApiMCP  # Apenas necessário para MCP server
 
-# Importar routers - COMENTADO: módulos não existem
-# from routes.chat_routes import router as chat_router  # WebSocket chat habilitado!
-# from routes.admin_config_routes import router as admin_config_router, user_config_router  # Admin config + User config
-# from routes.webhook_routes import router as webhook_router  # Webhooks para automação CRM
-# from routes.lead_conversion_routes import router as lead_conversion_router  # Conversão lead → mentorado
-# from routes.config_routes import router as config_router  # White Label config
-# from routes.user_routes import router as user_router  # User management + Evolution
+# Importar routers
+from routes.chat_routes import router as chat_router  # WebSocket chat habilitado!
+from routes.admin_config_routes import router as admin_config_router, user_config_router  # Admin config + User config
+from routes.webhook_routes import router as webhook_router  # Webhooks para automação CRM
+from routes.lead_conversion_routes import router as lead_conversion_router  # Conversão lead → mentorado
+from routes.config_routes import router as config_router  # White Label config
+from routes.user_routes import router as user_router  # User management + Evolution
 
-# Importar ConfigManager para gerenciamento dinâmico de agentes/ferramentas - COMENTADO: módulo não existe
-# from core.config_manager import init_config_manager
+# Importar ConfigManager para gerenciamento dinâmico de agentes/ferramentas
+from core.config_manager import init_config_manager
 
-# Importar sistema de roles e permissões - COMENTADO: módulo não existe
-# from core.roles import require_role, get_user_role
-
-# Função para buscar role do usuário no banco
-def get_user_role(user_id: int) -> str:
-    """Busca a role do usuário no banco de dados"""
-    try:
-        from core.turso_database import get_db_connection
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT role FROM users WHERE user_id = ?", (user_id,))
-        result = cursor.fetchone()
-        cursor.close()
-        conn.close()
-        if result:
-            return result['role'] or 'mentorado'
-        return 'mentorado'
-    except Exception:
-        return 'mentorado'
+# Importar sistema de roles e permissões
+from core.roles import require_role, get_user_role
 
 # Load environment variables
 load_dotenv(override=True)
@@ -131,7 +114,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS configuration - Restrict to known origins in production
 # Quando allow_credentials=True, não pode usar "*" - precisa especificar origens
-DEFAULT_ORIGINS = "https://mvp.agentesintegrados.com,https://agentesintegrados.com,http://localhost:4200,http://localhost:8234"
+DEFAULT_ORIGINS = "https://mvp.nandamac.cloud,https://nandamac.cloud,http://localhost:4200,http://localhost:8234"
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", DEFAULT_ORIGINS).split(",")
 app.add_middleware(
     CORSMiddleware,
@@ -150,7 +133,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # mcp = FastApiMCP(
 #     app,
 #     name="crm-api",
-#     description="CRM - Sistema de CRM de resíduos com IA para o Brasil"
+#     description="Nanda - Sistema de diagnostico de resíduos com IA para o Brasil"
 # )
 # mcp.mount()
 # logger.info("MCP Server mounted at /mcp")
@@ -334,7 +317,7 @@ def generate_refresh_token(user_id, cursor):
 
     cursor.execute("""
         INSERT INTO refresh_tokens (user_id, refresh_token, expires_at)
-        VALUES (?, ?, ?)
+        VALUES (%s, %s, %s)
     """, (user_id, refresh_token, expires_at))
 
     return refresh_token
@@ -346,7 +329,7 @@ def verify_refresh_token(refresh_token, cursor):
     cursor.execute("""
         SELECT user_id, expires_at, revoked
         FROM refresh_tokens
-        WHERE refresh_token = ?
+        WHERE refresh_token = %s
     """, (refresh_token,))
 
     result = cursor.fetchone()
@@ -380,11 +363,11 @@ def save_chat_session(session_id: str, user_id: int, title: str = None) -> bool:
         logger.error("Failed to get database connection for chat session")
         return False
 
-    cursor = connection.cursor()
+    cursor = connection.cursor(dictionary=True)
     try:
         # Check if session exists
         cursor.execute(
-            "SELECT session_id FROM chat_sessions WHERE session_id = ?",
+            "SELECT session_id FROM chat_sessions WHERE session_id = %s",
             (session_id,)
         )
         existing = cursor.fetchone()
@@ -392,14 +375,14 @@ def save_chat_session(session_id: str, user_id: int, title: str = None) -> bool:
         if existing:
             # Update existing session
             cursor.execute(
-                "UPDATE chat_sessions SET updated_at = CURRENT_TIMESTAMP WHERE session_id = ?",
+                "UPDATE chat_sessions SET updated_at = CURRENT_TIMESTAMP WHERE session_id = %s",
                 (session_id,)
             )
         else:
             # Create new session
             cursor.execute(
                 """INSERT INTO chat_sessions (session_id, user_id, title)
-                   VALUES (?, ?, ?)""",
+                   VALUES (%s, %s, %s)""",
                 (session_id, user_id, title or "Nova conversa")
             )
 
@@ -425,7 +408,7 @@ def save_chat_message(session_id: str, user_id: int, role: str, content: str,
     try:
         cursor.execute(
             """INSERT INTO chat_messages (session_id, user_id, role, content, image_url, map_url)
-               VALUES (?, ?, ?, ?, ?, ?)""",
+               VALUES (%s, %s, %s, %s, %s, %s)""",
             (session_id, user_id, role, content, image_url, map_url)
         )
         connection.commit()
@@ -445,13 +428,13 @@ def get_chat_sessions(user_id: int, page: int = 1, per_page: int = 20) -> Dict:
     if not connection:
         return {"error": "Database connection failed"}
 
-    cursor = connection.cursor()
+    cursor = connection.cursor(dictionary=True)
     try:
         offset = (page - 1) * per_page
 
         # Get total count
         cursor.execute(
-            "SELECT COUNT(*) as total FROM chat_sessions WHERE user_id = ?",
+            "SELECT COUNT(*) as total FROM chat_sessions WHERE user_id = %s",
             (user_id,)
         )
         total = cursor.fetchone()['total']
@@ -461,9 +444,9 @@ def get_chat_sessions(user_id: int, page: int = 1, per_page: int = 20) -> Dict:
             """SELECT session_id, title, created_at, updated_at,
                       (SELECT COUNT(*) FROM chat_messages WHERE chat_messages.session_id = chat_sessions.session_id) as message_count
                FROM chat_sessions
-               WHERE user_id = ?
+               WHERE user_id = %s
                ORDER BY updated_at DESC
-               LIMIT ? OFFSET ?""",
+               LIMIT %s OFFSET %s""",
             (user_id, per_page, offset)
         )
         sessions = cursor.fetchall()
@@ -493,18 +476,18 @@ def get_chat_messages(session_id: str, user_id: Optional[int], page: int = 1, pe
     if not connection:
         return {"error": "Database connection failed"}
 
-    cursor = connection.cursor()
+    cursor = connection.cursor(dictionary=True)
     try:
         # Verify session exists (and belongs to user if not admin)
         if user_id is not None:
             cursor.execute(
-                "SELECT session_id FROM chat_sessions WHERE session_id = ? AND user_id = ?",
+                "SELECT session_id FROM chat_sessions WHERE session_id = %s AND user_id = %s",
                 (session_id, user_id)
             )
         else:
             # Admin - apenas verificar se sessão existe
             cursor.execute(
-                "SELECT session_id FROM chat_sessions WHERE session_id = ?",
+                "SELECT session_id FROM chat_sessions WHERE session_id = %s",
                 (session_id,)
             )
         if not cursor.fetchone():
@@ -514,7 +497,7 @@ def get_chat_messages(session_id: str, user_id: Optional[int], page: int = 1, pe
 
         # Get total count
         cursor.execute(
-            "SELECT COUNT(*) as total FROM chat_messages WHERE session_id = ?",
+            "SELECT COUNT(*) as total FROM chat_messages WHERE session_id = %s",
             (session_id,)
         )
         total = cursor.fetchone()['total']
@@ -523,9 +506,9 @@ def get_chat_messages(session_id: str, user_id: Optional[int], page: int = 1, pe
         cursor.execute(
             """SELECT message_id, role, content, image_url, map_url, created_at
                FROM chat_messages
-               WHERE session_id = ?
+               WHERE session_id = %s
                ORDER BY message_id ASC
-               LIMIT ? OFFSET ?""",
+               LIMIT %s OFFSET %s""",
             (session_id, per_page, offset)
         )
         messages = cursor.fetchall()
@@ -558,7 +541,7 @@ def update_session_title(session_id: str, user_id: int, title: str) -> bool:
     cursor = connection.cursor()
     try:
         cursor.execute(
-            "UPDATE chat_sessions SET title = ? WHERE session_id = ? AND user_id = ?",
+            "UPDATE chat_sessions SET title = %s WHERE session_id = %s AND user_id = %s",
             (title, session_id, user_id)
         )
         connection.commit()
@@ -579,7 +562,7 @@ def delete_chat_session(session_id: str, user_id: int) -> bool:
     cursor = connection.cursor()
     try:
         cursor.execute(
-            "DELETE FROM chat_sessions WHERE session_id = ? AND user_id = ?",
+            "DELETE FROM chat_sessions WHERE session_id = %s AND user_id = %s",
             (session_id, user_id)
         )
         connection.commit()
@@ -616,12 +599,12 @@ def check_and_create_hotspots(cursor, connection, report, report_id, analysis_re
             FROM reports
             WHERE (
                 6371 * acos(
-                    cos(radians(?)) * cos(radians(latitude)) * 
-                    cos(radians(longitude) - radians(?)) + 
-                    sin(radians(?)) * sin(radians(latitude))
+                    cos(radians(%s)) * cos(radians(latitude)) * 
+                    cos(radians(longitude) - radians(%s)) + 
+                    sin(radians(%s)) * sin(radians(latitude))
                 )
             ) < 0.5  -- Reports within 500 meters
-            AND report_id != ?
+            AND report_id != %s
             AND status = 'analyzed'  -- Only include analyzed reports in hotspots
             """,
             (report['latitude'], report['longitude'], report['latitude'], report_id)
@@ -641,9 +624,9 @@ def check_and_create_hotspots(cursor, connection, report, report_id, analysis_re
                 FROM hotspots
                 WHERE (
                     6371 * acos(
-                        cos(radians(?)) * cos(radians(center_latitude)) * 
-                        cos(radians(center_longitude) - radians(?)) + 
-                        sin(radians(?)) * sin(radians(center_latitude))
+                        cos(radians(%s)) * cos(radians(center_latitude)) * 
+                        cos(radians(center_longitude) - radians(%s)) + 
+                        sin(radians(%s)) * sin(radians(center_latitude))
                     )
                 ) < 0.5  -- Within 500 meters
                 """,
@@ -658,8 +641,8 @@ def check_and_create_hotspots(cursor, connection, report, report_id, analysis_re
                 cursor.execute(
                     """
                     UPDATE hotspots
-                    SET last_reported = ?, total_reports = ?
-                    WHERE hotspot_id = ?
+                    SET last_reported = %s, total_reports = %s
+                    WHERE hotspot_id = %s
                     """,
                     (datetime.now().date(), nearby_count + 1, hotspot_id)
                 )
@@ -672,7 +655,7 @@ def check_and_create_hotspots(cursor, connection, report, report_id, analysis_re
                         name, center_latitude, center_longitude, radius_meters,
                         location_id, first_reported, last_reported, total_reports,
                         average_severity, status
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """,
                     (
                         f"Hotspot near {report.get('address_text', 'Unknown')}",
@@ -695,7 +678,7 @@ def check_and_create_hotspots(cursor, connection, report, report_id, analysis_re
             cursor.execute(
                 """
                 SELECT * FROM hotspot_reports 
-                WHERE hotspot_id = ? AND report_id = ?
+                WHERE hotspot_id = %s AND report_id = %s
                 """, 
                 (hotspot_id, report_id)
             )
@@ -704,7 +687,7 @@ def check_and_create_hotspots(cursor, connection, report, report_id, analysis_re
                 cursor.execute(
                     """
                     INSERT INTO hotspot_reports (hotspot_id, report_id)
-                    VALUES (?, ?)
+                    VALUES (%s, %s)
                     """,
                     (hotspot_id, report_id)
                 )
@@ -717,7 +700,7 @@ def check_and_create_hotspots(cursor, connection, report, report_id, analysis_re
                 cursor.execute(
                     """
                     SELECT * FROM hotspot_reports 
-                    WHERE hotspot_id = ? AND report_id = ?
+                    WHERE hotspot_id = %s AND report_id = %s
                     """, 
                     (hotspot_id, nearby_id)
                 )
@@ -726,7 +709,7 @@ def check_and_create_hotspots(cursor, connection, report, report_id, analysis_re
                     cursor.execute(
                         """
                         INSERT INTO hotspot_reports (hotspot_id, report_id)
-                        VALUES (?, ?)
+                        VALUES (%s, %s)
                         """,
                         (hotspot_id, nearby_id)
                     )
@@ -737,7 +720,7 @@ def check_and_create_hotspots(cursor, connection, report, report_id, analysis_re
                 SELECT AVG(ar.severity_score) as avg_severity
                 FROM hotspot_reports hr
                 JOIN analysis_results ar ON hr.report_id = ar.report_id
-                WHERE hr.hotspot_id = ?
+                WHERE hr.hotspot_id = %s
                 """,
                 (hotspot_id,)
             )
@@ -747,8 +730,8 @@ def check_and_create_hotspots(cursor, connection, report, report_id, analysis_re
                 cursor.execute(
                     """
                     UPDATE hotspots
-                    SET average_severity = ?
-                    WHERE hotspot_id = ?
+                    SET average_severity = %s
+                    WHERE hotspot_id = %s
                     """,
                     (avg_result['avg_severity'], hotspot_id)
                 )
@@ -1042,7 +1025,7 @@ async def process_report_with_agent_async(report_id, image_url, latitude, longit
     """Process report using AgentCore for analysis - truly async"""
     try:
         connection = get_db_connection()
-        cursor = connection.cursor()
+        cursor = connection.cursor(dictionary=True)
 
         # Download image and convert to base64 for AgentCore
         # Run in thread pool to avoid blocking
@@ -1192,11 +1175,11 @@ async def process_report(report_id, background_tasks: BackgroundTasks):
         if not connection:
             return {"success": False, "message": "Failed to connect to database"}
         
-        cursor = connection.cursor()
+        cursor = connection.cursor(dictionary=True)
         
         # Update report status to analyzing
         cursor.execute(
-            "UPDATE reports SET status = 'analyzing' WHERE report_id = ?",
+            "UPDATE reports SET status = 'analyzing' WHERE report_id = %s",
             (report_id,)
         )
         connection.commit()
@@ -1207,7 +1190,7 @@ async def process_report(report_id, background_tasks: BackgroundTasks):
             SELECT r.*, u.username
             FROM reports r
             LEFT JOIN users u ON r.user_id = u.user_id
-            WHERE r.report_id = ?
+            WHERE r.report_id = %s
             """,
             (report_id,)
         )
@@ -1221,7 +1204,7 @@ async def process_report(report_id, background_tasks: BackgroundTasks):
         # If no image, we can't analyze - return clear error
         if not report['image_url']:
             cursor.execute(
-                "UPDATE reports SET status = 'submitted' WHERE report_id = ?",
+                "UPDATE reports SET status = 'submitted' WHERE report_id = %s",
                 (report_id,)
             )
             connection.commit()
@@ -1242,7 +1225,7 @@ async def process_report(report_id, background_tasks: BackgroundTasks):
         
         if not analysis_result:
             cursor.execute(
-                "UPDATE reports SET status = 'submitted' WHERE report_id = ?",
+                "UPDATE reports SET status = 'submitted' WHERE report_id = %s",
                 (report_id,)
             )
             connection.commit()
@@ -1254,14 +1237,14 @@ async def process_report(report_id, background_tasks: BackgroundTasks):
         if analysis_result['waste_type'] == 'Not Garbage':
             # Update the report with "Not Garbage" description and set status to analyzed
             cursor.execute(
-                "UPDATE reports SET description = ?, status = ? WHERE report_id = ?",
+                "UPDATE reports SET description = %s, status = %s WHERE report_id = %s",
                 ("Not garbage.", "analyzed", report_id)
             )
             connection.commit()
             
             # Get or create "Not Garbage" waste type
             cursor.execute(
-                "SELECT waste_type_id FROM waste_types WHERE name = ?",
+                "SELECT waste_type_id FROM waste_types WHERE name = %s",
                 ("Not Garbage",)
             )
             waste_type_result = cursor.fetchone()
@@ -1274,7 +1257,7 @@ async def process_report(report_id, background_tasks: BackgroundTasks):
                 cursor.execute(
                     """
                     INSERT INTO waste_types (name, description, hazard_level, recyclable)
-                    VALUES (?, ?, ?, ?)
+                    VALUES (%s, %s, %s, %s)
                     """,
                     (
                         "Not Garbage",
@@ -1298,7 +1281,7 @@ async def process_report(report_id, background_tasks: BackgroundTasks):
                     estimated_volume, severity_score, priority_level,
                     analysis_notes, full_description, processed_by,
                     image_embedding, location_embedding
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
                     report_id,
@@ -1321,7 +1304,7 @@ async def process_report(report_id, background_tasks: BackgroundTasks):
             cursor.execute(
                 """
                 INSERT INTO system_logs (agent, action, details, related_id, related_table)
-                VALUES (?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s)
                 """,
                 (
                     'api_server',
@@ -1361,14 +1344,14 @@ async def process_report(report_id, background_tasks: BackgroundTasks):
         
         # Update the report with the short description
         cursor.execute(
-            "UPDATE reports SET description = ?, status = ? WHERE report_id = ?",
+            "UPDATE reports SET description = %s, status = %s WHERE report_id = %s",
             (short_description, "analyzed", report_id)
         )
         connection.commit()
         
         # Get waste type ID
         cursor.execute(
-            "SELECT waste_type_id FROM waste_types WHERE name = ?",
+            "SELECT waste_type_id FROM waste_types WHERE name = %s",
             (analysis_result['waste_type'],)
         )
         waste_type_result = cursor.fetchone()
@@ -1381,7 +1364,7 @@ async def process_report(report_id, background_tasks: BackgroundTasks):
             cursor.execute(
                 """
                 INSERT INTO waste_types (name, description, hazard_level, recyclable)
-                VALUES (?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s)
                 """,
                 (
                     analysis_result['waste_type'],
@@ -1405,7 +1388,7 @@ async def process_report(report_id, background_tasks: BackgroundTasks):
                 estimated_volume, severity_score, priority_level,
                 analysis_notes, full_description, processed_by,
                 image_embedding, location_embedding
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """,
             (
                 report_id,
@@ -1432,7 +1415,7 @@ async def process_report(report_id, background_tasks: BackgroundTasks):
         cursor.execute(
             """
             INSERT INTO system_logs (agent, action, details, related_id, related_table)
-            VALUES (?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s)
             """,
             (
                 'api_server',
@@ -1481,7 +1464,7 @@ async def health_check():
 
         if connection:
             try:
-                cursor = connection.cursor()
+                cursor = connection.cursor(dictionary=True)
                 cursor.execute("SELECT 1 as health_check")
                 result = cursor.fetchone()
 
@@ -1530,18 +1513,18 @@ async def health_check():
             "version": "2.0.0"
         }
 
-# Include routers - COMENTADO: routers não existem
-# app.include_router(chat_router)  # WebSocket chat com RAG habilitado!
-# app.include_router(admin_config_router)  # Admin config de agentes/ferramentas
-# app.include_router(user_config_router)  # User config (LLM para qualquer usuário autenticado)
-# app.include_router(webhook_router)  # Webhooks para automação CRM
-# app.include_router(lead_conversion_router)  # Conversão lead → mentorado
-# app.include_router(config_router)  # White Label config (público + admin)
-# app.include_router(user_router)  # User management + Evolution flywheel
+# Include routers
+app.include_router(chat_router)  # WebSocket chat com RAG habilitado!
+app.include_router(admin_config_router)  # Admin config de agentes/ferramentas
+app.include_router(user_config_router)  # User config (LLM para qualquer usuário autenticado)
+app.include_router(webhook_router)  # Webhooks para automação CRM
+app.include_router(lead_conversion_router)  # Conversão lead → mentorado
+app.include_router(config_router)  # White Label config (público + admin)
+app.include_router(user_router)  # User management + Evolution flywheel
 
-# Inicializar ConfigManager para gerenciamento dinâmico - COMENTADO: módulo não existe
-# init_config_manager(get_db_connection)
-# logger.info("ConfigManager initialized - dynamic agent/tool management enabled")
+# Inicializar ConfigManager para gerenciamento dinâmico
+init_config_manager(get_db_connection)
+logger.info("ConfigManager initialized - dynamic agent/tool management enabled")
 
 # Authentication routes
 @app.get("/api/auth/check-existing", response_model=dict)
@@ -1552,16 +1535,16 @@ async def check_existing_user(email: str = None, username: str = None):
             raise HTTPException(status_code=400, detail="Either email or username is required")
             
         connection = get_db_connection()
-        cursor = connection.cursor()
+        cursor = connection.cursor(dictionary=True)
         
         conditions = []
         params = []
         
         if email:
-            conditions.append("email = ?")
+            conditions.append("email = %s")
             params.append(email)
         if username:
-            conditions.append("username = ?") 
+            conditions.append("username = %s") 
             params.append(username)
             
         where_clause = " OR ".join(conditions)
@@ -1606,11 +1589,11 @@ async def register(user_data: UserCreate, request: Request):
         logger.info(f"Registration attempt for email: {user_data.email}")
 
         connection = get_db_connection()
-        cursor = connection.cursor()
+        cursor = connection.cursor(dictionary=True)
 
         # Check if email already exists (email é o identificador único agora)
         cursor.execute(
-            "SELECT user_id, username, email FROM users WHERE email = ?",
+            "SELECT user_id, username, email FROM users WHERE email = %s",
             (user_data.email,)
         )
         existing_user = cursor.fetchone()
@@ -1632,7 +1615,7 @@ async def register(user_data: UserCreate, request: Request):
         cursor.execute(
             """
             INSERT INTO users (username, email, phone_number, password_hash, registration_date, account_status, verification_status, role)
-            VALUES (?, ?, ?, ?, ?, 'active', 1, ?)
+            VALUES (%s, %s, %s, %s, %s, 'active', 1, %s)
             """,
             (email_prefix, user_data.email, user_data.phone_number, hashed_password, datetime.now(), role)
         )
@@ -1646,7 +1629,7 @@ async def register(user_data: UserCreate, request: Request):
 
         # Atualizar username com o ID
         cursor.execute(
-            "UPDATE users SET username = ? WHERE user_id = ?",
+            "UPDATE users SET username = %s WHERE user_id = %s",
             (username, user_id)
         )
         connection.commit()
@@ -1710,12 +1693,12 @@ async def verify_registration(verification: OTPVerify):
     try:
         # Get pending registration details
         connection = get_db_connection()
-        cursor = connection.cursor()
+        cursor = connection.cursor(dictionary=True)
         
         cursor.execute(
             """
             SELECT * FROM pending_registrations
-            WHERE email = ? AND otp = ?
+            WHERE email = %s AND otp = %s
             """,
             (verification.email, verification.otp)
         )
@@ -1726,7 +1709,7 @@ async def verify_registration(verification: OTPVerify):
             cursor.execute(
                 """
                 SELECT * FROM pending_registrations
-                WHERE email = ?
+                WHERE email = %s
                 """,
                 (verification.email,)
             )
@@ -1736,7 +1719,7 @@ async def verify_registration(verification: OTPVerify):
             if wrong_otp_pending:
                 # Increment attempts
                 cursor.execute(
-                    "UPDATE pending_registrations SET attempts = attempts + 1 WHERE registration_id = ?",
+                    "UPDATE pending_registrations SET attempts = attempts + 1 WHERE registration_id = %s",
                     (wrong_otp_pending['registration_id'],)
                 )
                 connection.commit()
@@ -1744,7 +1727,7 @@ async def verify_registration(verification: OTPVerify):
                 # Check if too many attempts
                 if wrong_otp_pending['attempts'] >= 3:
                     cursor.execute(
-                        "DELETE FROM pending_registrations WHERE registration_id = ?",
+                        "DELETE FROM pending_registrations WHERE registration_id = %s",
                         (wrong_otp_pending['registration_id'],)
                     )
                     connection.commit()
@@ -1768,7 +1751,7 @@ async def verify_registration(verification: OTPVerify):
         if pending['expires_at'] < now:
             # Delete expired registration
             cursor.execute(
-                "DELETE FROM pending_registrations WHERE registration_id = ?",
+                "DELETE FROM pending_registrations WHERE registration_id = %s",
                 (pending['registration_id'],)
             )
             connection.commit()
@@ -1781,7 +1764,7 @@ async def verify_registration(verification: OTPVerify):
             """
             INSERT INTO users 
             (username, email, phone_number, password_hash, registration_date, account_status, verification_status) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
             """,
             (pending['username'], pending['email'], pending['phone_number'], 
              pending['password_hash'], datetime.now(), 'active', True)
@@ -1792,7 +1775,7 @@ async def verify_registration(verification: OTPVerify):
         
         # Delete pending registration
         cursor.execute(
-            "DELETE FROM pending_registrations WHERE registration_id = ?",
+            "DELETE FROM pending_registrations WHERE registration_id = %s",
             (pending['registration_id'],)
         )
         connection.commit()
@@ -1802,7 +1785,7 @@ async def verify_registration(verification: OTPVerify):
             """
             SELECT user_id, username, email, phone_number, registration_date, 
                    account_status, profile_image_url, verification_status
-            FROM users WHERE user_id = ?
+            FROM users WHERE user_id = %s
             """,
             (user_id,)
         )
@@ -1839,14 +1822,14 @@ async def login(login_data: UserLogin, request: Request):
     try:
         # Get user by email
         connection = get_db_connection()
-        cursor = connection.cursor()
+        cursor = connection.cursor(dictionary=True)
 
         cursor.execute(
             """
             SELECT user_id, username, email, phone_number, password_hash, registration_date,
                    last_login, account_status, profile_image_url, verification_status, role,
                    admin_level
-            FROM users WHERE email = ?
+            FROM users WHERE email = %s
             """,
             (login_data.email,)
         )
@@ -1866,7 +1849,7 @@ async def login(login_data: UserLogin, request: Request):
         
         # Update last login time
         cursor.execute(
-            "UPDATE users SET last_login = ? WHERE user_id = ?",
+            "UPDATE users SET last_login = %s WHERE user_id = %s",
             (datetime.now(), user['user_id'])
         )
         connection.commit()
@@ -1907,7 +1890,7 @@ async def refresh_access_token(refresh_data: RefreshRequest, request: Request):
     """Generate new access token using refresh token"""
     try:
         connection = get_db_connection()
-        cursor = connection.cursor()
+        cursor = connection.cursor(dictionary=True)
 
         # Verify refresh token
         user_id = verify_refresh_token(refresh_data.refresh_token, cursor)
@@ -1923,7 +1906,7 @@ async def refresh_access_token(refresh_data: RefreshRequest, request: Request):
             SELECT user_id, username, email, phone_number, profile_image_url,
                    registration_date, account_status, verification_status, role, admin_level
             FROM users
-            WHERE user_id = ? AND account_status = 'active'
+            WHERE user_id = %s AND account_status = 'active'
             """,
             (user_id,)
         )
@@ -1969,8 +1952,8 @@ async def logout(logout_data: LogoutRequest, request: Request, current_user_id: 
         cursor.execute(
             """
             UPDATE refresh_tokens
-            SET revoked = TRUE, revoked_at = ?
-            WHERE refresh_token = ? AND user_id = ?
+            SET revoked = TRUE, revoked_at = %s
+            WHERE refresh_token = %s AND user_id = %s
             """,
             (datetime.now(timezone.utc), logout_data.refresh_token, current_user_id)
         )
@@ -2001,10 +1984,10 @@ async def send_otp(otp_request: OTPRequest):
         
         # Get user ID
         connection = get_db_connection()
-        cursor = connection.cursor()
+        cursor = connection.cursor(dictionary=True)
         
         cursor.execute(
-            "SELECT user_id FROM users WHERE email = ?",
+            "SELECT user_id FROM users WHERE email = %s",
             (email,)
         )
         
@@ -2022,7 +2005,7 @@ async def send_otp(otp_request: OTPRequest):
         
         # Check if there's an existing OTP for this user
         cursor.execute(
-            "SELECT verification_id FROM user_verifications WHERE user_id = ? AND is_verified = FALSE",
+            "SELECT verification_id FROM user_verifications WHERE user_id = %s AND is_verified = FALSE",
             (user_id,)
         )
         
@@ -2033,8 +2016,8 @@ async def send_otp(otp_request: OTPRequest):
             cursor.execute(
                 """
                 UPDATE user_verifications 
-                SET otp = ?, created_at = ?, expires_at = ?, attempts = 0
-                WHERE verification_id = ?
+                SET otp = %s, created_at = %s, expires_at = %s, attempts = 0
+                WHERE verification_id = %s
                 """,
                 (otp, datetime.now(), expires_at, existing_verification['verification_id'])
             )
@@ -2044,7 +2027,7 @@ async def send_otp(otp_request: OTPRequest):
                 """
                 INSERT INTO user_verifications 
                 (user_id, email, otp, created_at, expires_at)
-                VALUES (?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s)
                 """,
                 (user_id, email, otp, datetime.now(), expires_at)
             )
@@ -2105,14 +2088,14 @@ async def verify_otp(verification: OTPVerify):
     try:
         # Get verification details
         connection = get_db_connection()
-        cursor = connection.cursor()
+        cursor = connection.cursor(dictionary=True)
         
         cursor.execute(
             """
             SELECT v.*, u.user_id, u.username
             FROM user_verifications v
             JOIN users u ON v.user_id = u.user_id
-            WHERE v.email = ? AND v.is_verified = FALSE
+            WHERE v.email = %s AND v.is_verified = FALSE
             ORDER BY v.created_at DESC
             LIMIT 1
             """,
@@ -2135,7 +2118,7 @@ async def verify_otp(verification: OTPVerify):
         
         # Update attempt count
         cursor.execute(
-            "UPDATE user_verifications SET attempts = attempts + 1 WHERE verification_id = ?",
+            "UPDATE user_verifications SET attempts = attempts + 1 WHERE verification_id = %s",
             (verification_record['verification_id'],)
         )
         connection.commit()
@@ -2145,7 +2128,7 @@ async def verify_otp(verification: OTPVerify):
             # If too many attempts, mark as expired
             if verification_record['attempts'] >= 3:
                 cursor.execute(
-                    "UPDATE user_verifications SET expires_at = ? WHERE verification_id = ?",
+                    "UPDATE user_verifications SET expires_at = %s WHERE verification_id = %s",
                     (now - timedelta(minutes=1), verification_record['verification_id'])
                 )
                 connection.commit()
@@ -2162,13 +2145,13 @@ async def verify_otp(verification: OTPVerify):
         
         # OTP is valid - mark as verified
         cursor.execute(
-            "UPDATE user_verifications SET is_verified = TRUE WHERE verification_id = ?",
+            "UPDATE user_verifications SET is_verified = TRUE WHERE verification_id = %s",
             (verification_record['verification_id'],)
         )
         
         # Update user's verification status
         cursor.execute(
-            "UPDATE users SET verification_status = TRUE WHERE user_id = ?",
+            "UPDATE users SET verification_status = TRUE WHERE user_id = %s",
             (verification_record['user_id'],)
         )
         connection.commit()
@@ -2181,7 +2164,7 @@ async def verify_otp(verification: OTPVerify):
             """
             SELECT user_id, username, email, phone_number, registration_date, 
                    last_login, account_status, profile_image_url, verification_status
-            FROM users WHERE user_id = ?
+            FROM users WHERE user_id = %s
             """,
             (verification_record['user_id'],)
         )
@@ -2216,10 +2199,10 @@ async def resend_otp(request: ResendOTPRequest):
         
         # Get user details
         connection = get_db_connection()
-        cursor = connection.cursor()
+        cursor = connection.cursor(dictionary=True)
         
         cursor.execute(
-            "SELECT user_id, username FROM users WHERE email = ?",
+            "SELECT user_id, username FROM users WHERE email = %s",
             (email,)
         )
         
@@ -2236,7 +2219,7 @@ async def resend_otp(request: ResendOTPRequest):
         
         # Check if there's an existing OTP for this user
         cursor.execute(
-            "SELECT verification_id FROM user_verifications WHERE user_id = ? AND is_verified = FALSE",
+            "SELECT verification_id FROM user_verifications WHERE user_id = %s AND is_verified = FALSE",
             (user['user_id'],)
         )
         
@@ -2247,8 +2230,8 @@ async def resend_otp(request: ResendOTPRequest):
             cursor.execute(
                 """
                 UPDATE user_verifications 
-                SET otp = ?, created_at = ?, expires_at = ?, attempts = 0
-                WHERE verification_id = ?
+                SET otp = %s, created_at = %s, expires_at = %s, attempts = 0
+                WHERE verification_id = %s
                 """,
                 (otp, datetime.now(), expires_at, existing_verification['verification_id'])
             )
@@ -2258,7 +2241,7 @@ async def resend_otp(request: ResendOTPRequest):
                 """
                 INSERT INTO user_verifications 
                 (user_id, email, otp, created_at, expires_at)
-                VALUES (?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s)
                 """,
                 (user['user_id'], email, otp, datetime.now(), expires_at)
             )
@@ -2319,10 +2302,10 @@ async def change_password(password_data: ChangePassword, user_id: int = Depends(
     try:
         # Get user's current password hash
         connection = get_db_connection()
-        cursor = connection.cursor()
+        cursor = connection.cursor(dictionary=True)
         
         cursor.execute(
-            "SELECT password_hash FROM users WHERE user_id = ?",
+            "SELECT password_hash FROM users WHERE user_id = %s",
             (user_id,)
         )
         
@@ -2343,7 +2326,7 @@ async def change_password(password_data: ChangePassword, user_id: int = Depends(
         new_password_hash = hash_password(password_data.new_password)
         
         cursor.execute(
-            "UPDATE users SET password_hash = ? WHERE user_id = ?",
+            "UPDATE users SET password_hash = %s WHERE user_id = %s",
             (new_password_hash, user_id)
         )
         connection.commit()
@@ -2370,7 +2353,7 @@ async def update_user(user_id: int, update_data: UpdateUserProfile, current_user
             raise HTTPException(status_code=403, detail="Access denied. You can only update your own profile")
 
         connection = get_db_connection()
-        cursor = connection.cursor()
+        cursor = connection.cursor(dictionary=True)
 
         # Check if there are any fields to update
         update_fields = {}
@@ -2378,7 +2361,7 @@ async def update_user(user_id: int, update_data: UpdateUserProfile, current_user
         # Verificar username duplicado
         if update_data.username is not None:
             cursor.execute(
-                "SELECT user_id FROM users WHERE username = ? AND user_id != ?",
+                "SELECT user_id FROM users WHERE username = %s AND user_id != %s",
                 (update_data.username, user_id)
             )
             if cursor.fetchone():
@@ -2390,7 +2373,7 @@ async def update_user(user_id: int, update_data: UpdateUserProfile, current_user
         # Verificar email duplicado
         if update_data.email is not None:
             cursor.execute(
-                "SELECT user_id FROM users WHERE email = ? AND user_id != ?",
+                "SELECT user_id FROM users WHERE email = %s AND user_id != %s",
                 (update_data.email, user_id)
             )
             if cursor.fetchone():
@@ -2410,13 +2393,13 @@ async def update_user(user_id: int, update_data: UpdateUserProfile, current_user
             raise HTTPException(status_code=400, detail="No valid fields to update")
             
         # Construct the SQL SET clause for the fields to update
-        set_clause = ", ".join([f"{field} = ?" for field in update_fields.keys()])
+        set_clause = ", ".join([f"{field} = %s" for field in update_fields.keys()])
         values = list(update_fields.values())
         values.append(user_id)  # Add user_id for the WHERE clause
 
         # Update the user profile
         cursor.execute(
-            f"UPDATE users SET {set_clause} WHERE user_id = ?",
+            f"UPDATE users SET {set_clause} WHERE user_id = %s",
             values
         )
         connection.commit()
@@ -2427,7 +2410,7 @@ async def update_user(user_id: int, update_data: UpdateUserProfile, current_user
             SELECT user_id, username, email, phone_number, registration_date, 
                    last_login, account_status, profile_image_url, verification_status
             FROM users 
-            WHERE user_id = ?
+            WHERE user_id = %s
             """,
             (user_id,)
         )
@@ -2463,13 +2446,13 @@ async def get_user(user_id: int, current_user_id: int = Depends(get_user_from_to
         
         # Get user details
         connection = get_db_connection()
-        cursor = connection.cursor()
+        cursor = connection.cursor(dictionary=True)
         
         cursor.execute(
             """
             SELECT user_id, username, email, phone_number, registration_date, 
                    last_login, account_status, profile_image_url, verification_status
-            FROM users WHERE user_id = ?
+            FROM users WHERE user_id = %s
             """,
             (user_id,)
         )
@@ -2534,11 +2517,11 @@ async def delete_user_account(
         if not connection:
             raise HTTPException(status_code=500, detail="Database connection failed")
 
-        cursor = connection.cursor()
+        cursor = connection.cursor(dictionary=True)
 
         # 1. Buscar hash da senha para validação
         cursor.execute(
-            "SELECT password_hash, username, email FROM users WHERE user_id = ?",
+            "SELECT password_hash, username, email FROM users WHERE user_id = %s",
             (user_id,)
         )
         user = cursor.fetchone()
@@ -2569,7 +2552,7 @@ async def delete_user_account(
         # - clients -> assessments -> scores/summaries (CASCADE)
 
         # Deletar user (triggers all CASCADEs)
-        cursor.execute("DELETE FROM users WHERE user_id = ?", (user_id,))
+        cursor.execute("DELETE FROM users WHERE user_id = %s", (user_id,))
 
         deleted_count = cursor.rowcount
         connection.commit()
@@ -2611,11 +2594,11 @@ async def delete_own_account(
         if not connection:
             raise HTTPException(status_code=500, detail="Database connection failed")
 
-        cursor = connection.cursor()
+        cursor = connection.cursor(dictionary=True)
 
         # Buscar dados do usuário para log
         cursor.execute(
-            "SELECT username, email FROM users WHERE user_id = ?",
+            "SELECT username, email FROM users WHERE user_id = %s",
             (current_user_id,)
         )
         user = cursor.fetchone()
@@ -2632,7 +2615,7 @@ async def delete_own_account(
         )
 
         # Deletar user (CASCADE deleta todos os dados relacionados)
-        cursor.execute("DELETE FROM users WHERE user_id = ?", (current_user_id,))
+        cursor.execute("DELETE FROM users WHERE user_id = %s", (current_user_id,))
 
         deleted_count = cursor.rowcount
         connection.commit()
@@ -2663,7 +2646,7 @@ async def delete_own_account(
 async def get_dashboard_statistics(user_id: int = Depends(get_user_from_token)):
     try:
         connection = get_db_connection()
-        cursor = connection.cursor()
+        cursor = connection.cursor(dictionary=True)
         
         # Get user's report counts
         cursor.execute(
@@ -2673,7 +2656,7 @@ async def get_dashboard_statistics(user_id: int = Depends(get_user_from_token)):
                 COUNT(CASE WHEN status = 'submitted' OR status = 'analyzing' THEN 1 END) as pending_reports,
                 COUNT(CASE WHEN status = 'resolved' THEN 1 END) as resolved_reports
             FROM reports
-            WHERE user_id = ?
+            WHERE user_id = %s
             """,
             (user_id,)
         )
@@ -2686,7 +2669,7 @@ async def get_dashboard_statistics(user_id: int = Depends(get_user_from_token)):
             SELECT a.waste_type as name, COUNT(*) as count
             FROM reports r
             JOIN analysis_results a ON r.report_id = a.report_id
-            WHERE r.user_id = ? AND a.waste_type IS NOT NULL
+            WHERE r.user_id = %s AND a.waste_type IS NOT NULL
             GROUP BY a.waste_type
             ORDER BY count DESC
             """,
@@ -2701,7 +2684,7 @@ async def get_dashboard_statistics(user_id: int = Depends(get_user_from_token)):
             SELECT a.severity as severity_score, COUNT(*) as count
             FROM reports r
             JOIN analysis_results a ON r.report_id = a.report_id
-            WHERE r.user_id = ? AND a.severity IS NOT NULL
+            WHERE r.user_id = %s AND a.severity IS NOT NULL
             GROUP BY a.severity
             ORDER BY a.severity
             """,
@@ -2723,7 +2706,7 @@ async def get_dashboard_statistics(user_id: int = Depends(get_user_from_token)):
                 COUNT(*) as count
             FROM reports r
             JOIN analysis_results a ON r.report_id = a.report_id
-            WHERE r.user_id = ? AND a.severity IS NOT NULL
+            WHERE r.user_id = %s AND a.severity IS NOT NULL
             GROUP BY priority_level
             ORDER BY
                 CASE priority_level
@@ -2745,7 +2728,7 @@ async def get_dashboard_statistics(user_id: int = Depends(get_user_from_token)):
                 DATE_FORMAT(created_at, '%Y-%m') as month,
                 COUNT(*) as count
             FROM reports
-            WHERE user_id = ?
+            WHERE user_id = %s
             AND created_at >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
             GROUP BY DATE_FORMAT(created_at, '%Y-%m')
             ORDER BY month
@@ -2770,7 +2753,7 @@ async def get_dashboard_statistics(user_id: int = Depends(get_user_from_token)):
                    a.waste_type
             FROM reports r
             LEFT JOIN analysis_results a ON r.report_id = a.report_id
-            WHERE r.user_id = ?
+            WHERE r.user_id = %s
             ORDER BY r.created_at DESC
             LIMIT 5
             """,
@@ -2812,7 +2795,7 @@ async def get_dashboard_statistics(user_id: int = Depends(get_user_from_token)):
                 WHERE user_id IS NOT NULL
                 GROUP BY user_id
             ) ranked_users 
-            WHERE user_id = ?
+            WHERE user_id = %s
             """,
             (user_id,)
         )
@@ -2854,7 +2837,7 @@ async def get_hotspots(
     """Lista hotspots de resíduos"""
     try:
         connection = get_db_connection()
-        cursor = connection.cursor()
+        cursor = connection.cursor(dictionary=True)
 
         query = """
             SELECT hotspot_id, name, center_latitude, center_longitude,
@@ -2865,7 +2848,7 @@ async def get_hotspots(
         params = []
 
         if status:
-            query += " WHERE status = ?"
+            query += " WHERE status = %s"
             params.append(status)
 
         query += " ORDER BY total_reports DESC"
@@ -2904,11 +2887,11 @@ async def get_hotspot_reports(
     """Lista relatórios associados a um hotspot"""
     try:
         connection = get_db_connection()
-        cursor = connection.cursor()
+        cursor = connection.cursor(dictionary=True)
 
         # Get hotspot info
         cursor.execute(
-            "SELECT * FROM hotspots WHERE hotspot_id = ?",
+            "SELECT * FROM hotspots WHERE hotspot_id = %s",
             (hotspot_id,)
         )
         hotspot = cursor.fetchone()
@@ -2926,8 +2909,8 @@ async def get_hotspot_reports(
             LEFT JOIN analysis_results a ON r.report_id = a.report_id
             WHERE ST_Distance_Sphere(
                 POINT(r.longitude, r.latitude),
-                POINT(?, ?)
-            ) <= ?
+                POINT(%s, %s)
+            ) <= %s
             ORDER BY r.created_at DESC
             """,
             (hotspot['center_longitude'], hotspot['center_latitude'], hotspot['radius_meters'])
@@ -2979,10 +2962,10 @@ async def update_report_status(
             )
 
         connection = get_db_connection()
-        cursor = connection.cursor()
+        cursor = connection.cursor(dictionary=True)
 
         # Check if report exists
-        cursor.execute("SELECT report_id, status FROM reports WHERE report_id = ?", (report_id,))
+        cursor.execute("SELECT report_id, status FROM reports WHERE report_id = %s", (report_id,))
         report = cursor.fetchone()
 
         if not report:
@@ -2994,7 +2977,7 @@ async def update_report_status(
 
         # Update status
         cursor.execute(
-            "UPDATE reports SET status = ? WHERE report_id = ?",
+            "UPDATE reports SET status = %s WHERE report_id = %s",
             (status_data.status, report_id)
         )
         connection.commit()
@@ -3035,10 +3018,10 @@ async def update_hotspot_status(
             )
 
         connection = get_db_connection()
-        cursor = connection.cursor()
+        cursor = connection.cursor(dictionary=True)
 
         # Check if hotspot exists
-        cursor.execute("SELECT hotspot_id, status FROM hotspots WHERE hotspot_id = ?", (hotspot_id,))
+        cursor.execute("SELECT hotspot_id, status FROM hotspots WHERE hotspot_id = %s", (hotspot_id,))
         hotspot = cursor.fetchone()
 
         if not hotspot:
@@ -3050,7 +3033,7 @@ async def update_hotspot_status(
 
         # Update status
         cursor.execute(
-            "UPDATE hotspots SET status = ? WHERE hotspot_id = ?",
+            "UPDATE hotspots SET status = %s WHERE hotspot_id = %s",
             (status_data.status, hotspot_id)
         )
         connection.commit()
@@ -3084,7 +3067,7 @@ async def process_queue(background_tasks: BackgroundTasks, user_id: int = Depend
         if not connection:
             raise HTTPException(status_code=500, detail="Failed to connect to database")
         
-        cursor = connection.cursor()
+        cursor = connection.cursor(dictionary=True)
         
         # Get unprocessed reports from the queue
         cursor.execute(
@@ -3114,8 +3097,8 @@ async def process_queue(background_tasks: BackgroundTasks, user_id: int = Depend
             cursor.execute(
                 """
                 UPDATE image_processing_queue
-                SET status = 'processing', processed_at = ?
-                WHERE queue_id = ?
+                SET status = 'processing', processed_at = %s
+                WHERE queue_id = %s
                 """,
                 (datetime.now(), item['queue_id'])
             )
@@ -3307,7 +3290,7 @@ def get_waste_statistics() -> dict:
     """Get overall waste statistics from the database"""
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
 
         # Get total reports
         cursor.execute("SELECT COUNT(*) as total FROM reports")
@@ -3348,7 +3331,7 @@ def search_reports_by_location(district: str = None, limit: int = 10) -> dict:
     """Search waste reports by location"""
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
 
         if district:
             cursor.execute("""
@@ -3358,9 +3341,9 @@ def search_reports_by_location(district: str = None, limit: int = 10) -> dict:
                 FROM reports r
                 LEFT JOIN analysis_results ar ON r.report_id = ar.report_id
                 LEFT JOIN waste_types wt ON ar.waste_type_id = wt.waste_type_id
-                WHERE r.address_text LIKE ?
+                WHERE r.address_text LIKE %s
                 ORDER BY r.report_date DESC
-                LIMIT ?
+                LIMIT %s
             """, (f'%{district}%', limit))
         else:
             cursor.execute("""
@@ -3371,7 +3354,7 @@ def search_reports_by_location(district: str = None, limit: int = 10) -> dict:
                 LEFT JOIN analysis_results ar ON r.report_id = ar.report_id
                 LEFT JOIN waste_types wt ON ar.waste_type_id = wt.waste_type_id
                 ORDER BY r.report_date DESC
-                LIMIT ?
+                LIMIT %s
             """, (limit,))
 
         reports = cursor.fetchall()
@@ -3398,7 +3381,7 @@ def get_hotspot_information(limit: int = 10) -> dict:
     """Get information about waste hotspots"""
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
 
         cursor.execute("""
             SELECT h.hotspot_id, h.name, h.center_latitude, h.center_longitude,
@@ -3406,7 +3389,7 @@ def get_hotspot_information(limit: int = 10) -> dict:
             FROM hotspots h
             WHERE h.status = 'active'
             ORDER BY h.average_severity DESC, h.total_reports DESC
-            LIMIT ?
+            LIMIT %s
         """, (limit,))
 
         hotspots = cursor.fetchall()
@@ -3435,7 +3418,7 @@ def get_waste_types_info() -> dict:
     """Get information about waste types and categories"""
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
 
         cursor.execute("""
             SELECT waste_type_id, name, description, hazard_level, recyclable
@@ -3467,7 +3450,7 @@ def execute_sql_query(sql_query: str) -> dict:
                 return {"error": f"Query contains forbidden keyword: {keyword}"}
 
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
 
         # Execute the query with a limit to prevent large result sets
         if 'LIMIT' not in query_upper:
@@ -3691,8 +3674,8 @@ async def custom_404_handler(request: requests, _exc: HTTPException):
         content={
             "project": "crm",
             "message": "🌱 This path doesn't exist in our crm ecosystem",
-            "Contact": "https://www.agentesintegrados.com",
-            "Visit": "www.agentesintegrados.com"
+            "Contact": "https://www.nandamac.cloud",
+            "Visit": "www.nandamac.cloud"
         }
     )
 
@@ -3739,10 +3722,10 @@ async def create_client_profile(
         raise HTTPException(status_code=500, detail="Erro ao conectar ao banco")
 
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
 
         # Verificar se já existe perfil
-        cursor.execute("SELECT client_id FROM clients WHERE user_id = ?", (user_id,))
+        cursor.execute("SELECT client_id FROM clients WHERE user_id = %s", (user_id,))
         existing = cursor.fetchone()
 
         if existing:
@@ -3756,7 +3739,7 @@ async def create_client_profile(
                 user_id, profession, specialty, years_experience,
                 current_revenue, desired_revenue, main_challenge,
                 has_secretary, team_size
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         """, (
             user_id,
             data.get('profession'),
@@ -3773,7 +3756,7 @@ async def create_client_profile(
         client_id = cursor.lastrowid
 
         # Retornar perfil criado
-        cursor.execute("SELECT * FROM clients WHERE client_id = ?", (client_id,))
+        cursor.execute("SELECT * FROM clients WHERE client_id = %s", (client_id,))
         client = cursor.fetchone()
 
         cursor.close()
@@ -3802,14 +3785,14 @@ async def get_my_client_profile(
         raise HTTPException(status_code=500, detail="Erro ao conectar ao banco")
 
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
 
         # Buscar perfil de users (não existe tabela clients separada)
         cursor.execute("""
             SELECT user_id, username, email, phone_number, profession, specialty,
                    current_revenue, desired_revenue, profile_image_url,
                    registration_date, current_stage_key
-            FROM users WHERE user_id = ?
+            FROM users WHERE user_id = %s
         """, (user_id,))
         client = cursor.fetchone()
 
@@ -3843,10 +3826,10 @@ async def update_my_client_profile(
         raise HTTPException(status_code=500, detail="Erro ao conectar ao banco")
 
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
 
         # Verificar se user existe
-        cursor.execute("SELECT user_id FROM users WHERE user_id = ?", (user_id,))
+        cursor.execute("SELECT user_id FROM users WHERE user_id = %s", (user_id,))
         existing = cursor.fetchone()
 
         if not existing:
@@ -3859,19 +3842,19 @@ async def update_my_client_profile(
         values = []
 
         if 'profession' in data:
-            update_fields.append("profession = ?")
+            update_fields.append("profession = %s")
             values.append(data['profession'])
         if 'specialty' in data:
-            update_fields.append("specialty = ?")
+            update_fields.append("specialty = %s")
             values.append(data['specialty'])
         if 'current_revenue' in data:
-            update_fields.append("current_revenue = ?")
+            update_fields.append("current_revenue = %s")
             values.append(data['current_revenue'])
         if 'desired_revenue' in data:
-            update_fields.append("desired_revenue = ?")
+            update_fields.append("desired_revenue = %s")
             values.append(data['desired_revenue'])
         if 'phone_number' in data:
-            update_fields.append("phone_number = ?")
+            update_fields.append("phone_number = %s")
             values.append(data['phone_number'])
 
         if not update_fields:
@@ -3881,7 +3864,7 @@ async def update_my_client_profile(
 
         values.append(user_id)
 
-        query = f"UPDATE users SET {', '.join(update_fields)} WHERE user_id = ?"
+        query = f"UPDATE users SET {', '.join(update_fields)} WHERE user_id = %s"
         cursor.execute(query, values)
         conn.commit()
 
@@ -3890,7 +3873,7 @@ async def update_my_client_profile(
             SELECT user_id, username, email, phone_number, profession, specialty,
                    current_revenue, desired_revenue, profile_image_url,
                    registration_date, current_stage_key
-            FROM users WHERE user_id = ?
+            FROM users WHERE user_id = %s
         """, (user_id,))
         client = cursor.fetchone()
 
@@ -3924,7 +3907,7 @@ async def list_diagnosis_questions():
         raise HTTPException(status_code=500, detail="Erro ao conectar ao banco")
 
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
 
         cursor.execute("""
             SELECT
@@ -3986,15 +3969,15 @@ async def create_assessment(
         raise HTTPException(status_code=500, detail="Erro ao conectar ao banco")
 
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
 
         # Verificar se client existe, se não criar
-        cursor.execute("SELECT client_id FROM clients WHERE user_id = ?", (user_id,))
+        cursor.execute("SELECT client_id FROM clients WHERE user_id = %s", (user_id,))
         client = cursor.fetchone()
 
         if not client:
             cursor.execute("""
-                INSERT INTO clients (user_id) VALUES (?)
+                INSERT INTO clients (user_id) VALUES (%s)
             """, (user_id,))
             conn.commit()
             client_id = cursor.lastrowid
@@ -4004,7 +3987,7 @@ async def create_assessment(
         # Criar nova avaliação
         cursor.execute("""
             INSERT INTO assessments (client_id, status)
-            VALUES (?, 'in_progress')
+            VALUES (%s, 'in_progress')
         """, (client_id,))
         conn.commit()
         assessment_id = cursor.lastrowid
@@ -4040,14 +4023,14 @@ async def list_my_assessments(
         raise HTTPException(status_code=500, detail="Erro ao conectar ao banco")
 
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
 
         cursor.execute("""
             SELECT
                 a.assessment_id, a.status, a.started_at, a.completed_at,
                 a.overall_score, a.profile_type
             FROM assessments a
-            WHERE a.user_id = ?
+            WHERE a.user_id = %s
             ORDER BY a.started_at DESC
         """, (user_id,))
 
@@ -4082,14 +4065,14 @@ async def save_assessment_answers(
         raise HTTPException(status_code=500, detail="Erro ao conectar ao banco")
 
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
 
         # Verificar se a avaliação pertence ao usuário
         cursor.execute("""
             SELECT a.assessment_id
             FROM assessments a
             -- REMOVED: clients table
-            WHERE a.assessment_id = ? AND u.user_id = ?
+            WHERE a.assessment_id = %s AND u.user_id = %s
         """, (assessment_id, user_id))
 
         if not cursor.fetchone():
@@ -4099,7 +4082,7 @@ async def save_assessment_answers(
         for answer in answers:
             cursor.execute("""
                 INSERT INTO assessment_answers (assessment_id, question_id, score, answer_text)
-                VALUES (?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s)
                 ON DUPLICATE KEY UPDATE score = VALUES(score), answer_text = VALUES(answer_text)
             """, (
                 assessment_id,
@@ -4141,14 +4124,14 @@ async def complete_assessment(
         raise HTTPException(status_code=500, detail="Erro ao conectar ao banco")
 
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
 
         # Verificar se pertence ao usuário
         cursor.execute("""
             SELECT a.assessment_id, u.user_id
             FROM assessments a
             -- REMOVED: clients table
-            WHERE a.assessment_id = ? AND u.user_id = ?
+            WHERE a.assessment_id = %s AND u.user_id = %s
         """, (assessment_id, user_id))
 
         assessment = cursor.fetchone()
@@ -4162,7 +4145,7 @@ async def complete_assessment(
                 AVG(aa.score) as avg_score
             FROM assessment_answers aa
             JOIN diagnosis_questions dq ON aa.question_id = dq.question_id
-            WHERE aa.assessment_id = ?
+            WHERE aa.assessment_id = %s
             GROUP BY dq.area_id
         """, (assessment_id,))
 
@@ -4172,7 +4155,7 @@ async def complete_assessment(
         for area in area_scores:
             cursor.execute("""
                 INSERT INTO assessment_area_scores (assessment_id, area_id, score)
-                VALUES (?, ?, ?)
+                VALUES (%s, %s, %s)
                 ON DUPLICATE KEY UPDATE score = VALUES(score)
             """, (assessment_id, area['area_id'], area['avg_score']))
 
@@ -4196,7 +4179,7 @@ async def complete_assessment(
             INSERT INTO assessment_summaries (
                 assessment_id, overall_score, profile_type,
                 strongest_area_id, weakest_area_id
-            ) VALUES (?, ?, ?, ?, ?)
+            ) VALUES (%s, %s, %s, %s, %s)
             ON DUPLICATE KEY UPDATE
                 overall_score = VALUES(overall_score),
                 profile_type = VALUES(profile_type),
@@ -4214,7 +4197,7 @@ async def complete_assessment(
         cursor.execute("""
             UPDATE assessments
             SET status = 'completed', completed_at = NOW()
-            WHERE assessment_id = ?
+            WHERE assessment_id = %s
         """, (assessment_id,))
 
         conn.commit()
@@ -4254,7 +4237,7 @@ async def get_assessment_result(
         raise HTTPException(status_code=500, detail="Erro ao conectar ao banco")
 
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
 
         # Verificar role do usuário
         user_role = get_user_role(user_id)
@@ -4269,7 +4252,7 @@ async def get_assessment_result(
                     u.username as client_name
                 FROM assessments a
                 JOIN users u ON a.user_id = u.user_id
-                WHERE a.assessment_id = ?
+                WHERE a.assessment_id = %s
             """, (assessment_id,))
         else:
             # Mentorado só pode ver o próprio diagnóstico
@@ -4281,7 +4264,7 @@ async def get_assessment_result(
                     u.username as client_name
                 FROM assessments a
                 JOIN users u ON a.user_id = u.user_id
-                WHERE a.assessment_id = ? AND a.user_id = ?
+                WHERE a.assessment_id = %s AND a.user_id = %s
             """, (assessment_id, user_id))
 
         summary = cursor.fetchone()
@@ -4295,7 +4278,7 @@ async def get_assessment_result(
                 aas.score, aas.strengths, aas.improvements, aas.recommendations
             FROM assessment_area_scores aas
             JOIN diagnosis_areas da ON aas.area_key = da.area_key
-            WHERE aas.assessment_id = ?
+            WHERE aas.assessment_id = %s
             ORDER BY da.order_index
         """, (assessment_id,))
 
@@ -4324,7 +4307,7 @@ async def get_assessment_result(
 
 
 # =====================================================
-# ENDPOINTS DE ADMIN (CRM)
+# ENDPOINTS DE ADMIN (Nanda)
 # =====================================================
 
 @app.get("/api/admin/mentors", response_model=dict)
@@ -4342,7 +4325,7 @@ async def list_all_mentors(user_id: int = Depends(get_user_from_token)):
         raise HTTPException(status_code=500, detail="Erro ao conectar ao banco")
 
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
         # WORKAROUND: mentor_id removido, sem LEFT JOIN
         cursor.execute("""
             SELECT
@@ -4387,16 +4370,16 @@ async def create_or_promote_mentor(
         raise HTTPException(status_code=500, detail="Erro ao conectar ao banco")
 
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
 
         # Verificar se usuário existe
-        cursor.execute("SELECT user_id, role FROM users WHERE email = ?", (email,))
+        cursor.execute("SELECT user_id, role FROM users WHERE email = %s", (email,))
         existing_user = cursor.fetchone()
 
         if existing_user:
             # Promover usuário existente a mentor
             cursor.execute(
-                "UPDATE users SET role = 'mentor' WHERE user_id = ?",
+                "UPDATE users SET role = 'mentor' WHERE user_id = %s",
                 (existing_user['user_id'],)
             )
             conn.commit()
@@ -4415,7 +4398,7 @@ async def create_or_promote_mentor(
 
             cursor.execute("""
                 INSERT INTO users (username, email, password_hash, phone_number, account_status, role)
-                VALUES (?, ?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s, %s)
             """, (
                 username,
                 email,
@@ -4470,10 +4453,10 @@ async def delete_mentor(
         raise HTTPException(status_code=500, detail="Erro ao conectar ao banco")
 
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
 
         # Verificar se usuário existe e é mentor
-        cursor.execute("SELECT user_id, username, role FROM users WHERE user_id = ?", (mentor_id,))
+        cursor.execute("SELECT user_id, username, role FROM users WHERE user_id = %s", (mentor_id,))
         user = cursor.fetchone()
 
         if not user:
@@ -4487,10 +4470,10 @@ async def delete_mentor(
             raise HTTPException(status_code=400, detail="Usuário não é um mentor")
 
         # Desvincular mentorados deste mentor
-        cursor.execute("UPDATE users SET mentor_id = NULL WHERE mentor_id = ?", (mentor_id,))
+        cursor.execute("UPDATE users SET mentor_id = NULL WHERE mentor_id = %s", (mentor_id,))
 
         # Rebaixar para mentorado (em vez de deletar)
-        cursor.execute("UPDATE users SET role = 'mentorado' WHERE user_id = ?", (mentor_id,))
+        cursor.execute("UPDATE users SET role = 'mentorado' WHERE user_id = %s", (mentor_id,))
         conn.commit()
 
         cursor.close()
@@ -4531,7 +4514,7 @@ async def list_all_mentorados(
         raise HTTPException(status_code=500, detail="Erro ao conectar ao banco")
 
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
 
         offset = (page - 1) * per_page
 
@@ -4549,7 +4532,7 @@ async def list_all_mentorados(
             FROM users
             WHERE role = 'mentorado'
             ORDER BY user_id DESC
-            LIMIT ? OFFSET ?
+            LIMIT %s OFFSET %s
         """, (per_page, offset))
         mentorados = cursor.fetchall()
 
@@ -4602,7 +4585,7 @@ async def list_all_leads(
         raise HTTPException(status_code=500, detail="Erro ao conectar ao banco")
 
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
         offset = (page - 1) * per_page
 
         # Query para leads (role = 'lead' OU admin_level = 5) com dados do CRM
@@ -4627,24 +4610,24 @@ async def list_all_leads(
 
         # Filtrar por estado
         if state:
-            base_query += " AND ls.current_state = ?"
+            base_query += " AND ls.current_state = %s"
             params.append(state)
 
         # Filtrar por busca (nome ou email)
         if search:
-            base_query += " AND (u.username LIKE ? OR u.email LIKE ?)"
+            base_query += " AND (u.username LIKE %s OR u.email LIKE %s)"
             search_term = f"%{search}%"
             params.extend([search_term, search_term])
 
         # Filtrar por profissão
         if profession:
-            base_query += " AND u.profession LIKE ?"
+            base_query += " AND u.profession LIKE %s"
             params.append(f"%{profession}%")
 
         # Filtrar deletados
         base_query += " AND u.deleted_at IS NULL"
 
-        base_query += " ORDER BY u.registration_date DESC LIMIT ? OFFSET ?"
+        base_query += " ORDER BY u.registration_date DESC LIMIT %s OFFSET %s"
         params.extend([per_page, offset])
 
         cursor.execute(base_query, tuple(params))
@@ -4669,16 +4652,16 @@ async def list_all_leads(
         count_params = []
 
         if state:
-            count_query += " AND ls.current_state = ?"
+            count_query += " AND ls.current_state = %s"
             count_params.append(state)
 
         if search:
             count_search_term = f"%{search}%"
-            count_query += " AND (u.username LIKE ? OR u.email LIKE ?)"
+            count_query += " AND (u.username LIKE %s OR u.email LIKE %s)"
             count_params.extend([count_search_term, count_search_term])
 
         if profession:
-            count_query += " AND u.profession LIKE ?"
+            count_query += " AND u.profession LIKE %s"
             count_params.append(f"%{profession}%")
 
         count_query += " AND u.deleted_at IS NULL"
@@ -4723,7 +4706,7 @@ async def get_lead_details(
         raise HTTPException(status_code=500, detail="Erro ao conectar ao banco")
 
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
 
         # Dados do lead
         cursor.execute("""
@@ -4733,7 +4716,7 @@ async def get_lead_details(
                 ls.current_state, ls.owner_team, ls.state_updated_at, ls.notes
             FROM users u
             LEFT JOIN crm_lead_state ls ON u.user_id = ls.lead_id
-            WHERE u.user_id = ?
+            WHERE u.user_id = %s
         """, (lead_id,))
         lead = cursor.fetchone()
 
@@ -4754,7 +4737,7 @@ async def get_lead_details(
         cursor.execute("""
             SELECT event_id, event_type, created_at, created_by, event_data
             FROM crm_lead_events
-            WHERE lead_id = ?
+            WHERE lead_id = %s
             ORDER BY created_at DESC
             LIMIT 20
         """, (lead_id,))
@@ -4798,11 +4781,11 @@ async def get_lead_events(
 
     conn = get_db_connection()
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
         cursor.execute("""
             SELECT event_id, event_type, created_at, created_by, event_data
             FROM crm_lead_events
-            WHERE lead_id = ?
+            WHERE lead_id = %s
             ORDER BY created_at DESC
             LIMIT 50
         """, (lead_id,))
@@ -4843,12 +4826,12 @@ async def add_lead_event(
 
     conn = get_db_connection()
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
         import json
 
         cursor.execute("""
             INSERT INTO crm_lead_events (lead_id, event_type, event_data, created_by)
-            VALUES (?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s)
         """, (lead_id, event_type, json.dumps(event_data) if event_data else None, user_id))
 
         conn.commit()
@@ -4878,32 +4861,32 @@ async def update_lead_state(
     if user_role != 'admin':
         raise HTTPException(status_code=403, detail="Acesso negado. Apenas admins.")
 
-    valid_states = ['novo', 'CRM_pendente', 'CRM_agendado',
+    valid_states = ['novo', 'diagnostico_pendente', 'diagnostico_agendado',
                     'em_atendimento', 'proposta_enviada', 'produto_vendido', 'perdido']
     if state not in valid_states:
         raise HTTPException(status_code=400, detail=f"Estado invalido. Valores aceitos: {valid_states}")
 
     conn = get_db_connection()
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
 
         # Buscar estado atual
-        cursor.execute("SELECT current_state FROM crm_lead_state WHERE lead_id = ?", (lead_id,))
+        cursor.execute("SELECT current_state FROM crm_lead_state WHERE lead_id = %s", (lead_id,))
         row = cursor.fetchone()
         old_state = row['current_state'] if row else 'novo'
 
         # Atualizar estado
         cursor.execute("""
             UPDATE crm_lead_state
-            SET current_state = ?, updated_at = NOW()
-            WHERE lead_id = ?
+            SET current_state = %s, updated_at = NOW()
+            WHERE lead_id = %s
         """, (state, lead_id))
 
         if cursor.rowcount == 0:
             # Criar registro se nao existe
             cursor.execute("""
                 INSERT INTO crm_lead_state (lead_id, current_state)
-                VALUES (?, ?)
+                VALUES (%s, %s)
             """, (lead_id, state))
 
         # Registrar evento de mudanca de estado
@@ -4911,7 +4894,7 @@ async def update_lead_state(
         event_data = json.dumps({"old_state": old_state, "new_state": state})
         cursor.execute("""
             INSERT INTO crm_lead_events (lead_id, event_type, event_data, created_by)
-            VALUES (?, 'estado_alterado', ?, ?)
+            VALUES (%s, 'estado_alterado', %s, %s)
         """, (lead_id, event_data, user_id))
 
         conn.commit()
@@ -4940,10 +4923,10 @@ async def convert_lead_to_mentorado(
 
     conn = get_db_connection()
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
 
         # Verificar se e lead (admin_level = 5)
-        cursor.execute("SELECT admin_level, nome FROM users WHERE user_id = ?", (lead_id,))
+        cursor.execute("SELECT admin_level, nome FROM users WHERE user_id = %s", (lead_id,))
         user = cursor.fetchone()
 
         if not user:
@@ -4954,14 +4937,14 @@ async def convert_lead_to_mentorado(
 
         # Atualizar para mentorado (admin_level = 4)
         cursor.execute("""
-            UPDATE users SET admin_level = 4 WHERE user_id = ?
+            UPDATE users SET admin_level = 4 WHERE user_id = %s
         """, (lead_id,))
 
         # Atualizar estado no CRM
         cursor.execute("""
             UPDATE crm_lead_state
             SET current_state = 'produto_vendido', updated_at = NOW()
-            WHERE lead_id = ?
+            WHERE lead_id = %s
         """, (lead_id,))
 
         # Registrar evento
@@ -4969,7 +4952,7 @@ async def convert_lead_to_mentorado(
         event_data = json.dumps({"converted_by": user_id, "old_role": "lead", "new_role": "mentorado"})
         cursor.execute("""
             INSERT INTO crm_lead_events (lead_id, event_type, event_data, created_by)
-            VALUES (?, 'convertido', ?, ?)
+            VALUES (%s, 'convertido', %s, %s)
         """, (lead_id, event_data, user_id))
 
         conn.commit()
@@ -5006,23 +4989,23 @@ async def assign_mentor_to_mentorado(
         raise HTTPException(status_code=500, detail="Erro ao conectar ao banco")
 
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
 
         # Verificar se mentor existe
-        cursor.execute("SELECT role FROM users WHERE user_id = ?", (mentor_id,))
+        cursor.execute("SELECT role FROM users WHERE user_id = %s", (mentor_id,))
         mentor = cursor.fetchone()
         if not mentor or mentor['role'] != 'mentor':
             raise HTTPException(status_code=404, detail="Mentor não encontrado")
 
         # Verificar se mentorado existe
-        cursor.execute("SELECT role FROM users WHERE user_id = ?", (mentorado_id,))
+        cursor.execute("SELECT role FROM users WHERE user_id = %s", (mentorado_id,))
         mentorado = cursor.fetchone()
         if not mentorado or mentorado['role'] != 'mentorado':
             raise HTTPException(status_code=404, detail="Mentorado não encontrado")
 
         # Atualizar vinculação
         cursor.execute(
-            "UPDATE users SET mentor_id = ? WHERE user_id = ?",
+            "UPDATE users SET mentor_id = %s WHERE user_id = %s",
             (mentor_id, mentorado_id)
         )
         conn.commit()
@@ -5070,7 +5053,7 @@ async def admin_reset_user_password(
         raise HTTPException(status_code=500, detail="Erro ao conectar ao banco")
 
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
 
         # Verificar se usuário alvo existe
         cursor.execute(
@@ -5144,7 +5127,7 @@ async def admin_update_user_level(
         raise HTTPException(status_code=500, detail="Erro ao conectar ao banco")
 
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
 
         # Verificar se usuário alvo existe
         cursor.execute(
@@ -5218,7 +5201,7 @@ LEVEL_LABELS_FALLBACK = {
 def get_levels_from_db(conn) -> list:
     """Retorna níveis configurados no banco de dados."""
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
         cursor.execute("""
             SELECT level, name, description, permissions, can_manage_levels, is_active
             FROM admin_levels
@@ -5322,7 +5305,7 @@ async def get_users_count_by_level(
         if not level_map:
             level_map = LEVEL_LABELS_FALLBACK.copy()
 
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
 
         # Contar usuários por admin_level
         cursor.execute("""
@@ -5397,7 +5380,7 @@ async def get_users_by_level(
         raise HTTPException(status_code=500, detail="Erro ao conectar ao banco")
 
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
         offset = (page - 1) * per_page
 
         # Query base - busca por admin_level OU por role correspondente
@@ -5510,7 +5493,7 @@ async def get_user_detail_by_level(
         raise HTTPException(status_code=500, detail="Erro ao conectar ao banco")
 
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
 
         # Buscar usuário
         cursor.execute("""
@@ -5599,15 +5582,15 @@ async def get_user_detail_by_level(
                 # Contar diagnósticos
                 cursor.execute("""
                     SELECT COUNT(*) as count FROM chat_sessions
-                    WHERE user_id = ? AND session_type = 'CRM'
+                    WHERE user_id = ? AND session_type = 'diagnostico'
                 """, (target_user_id,))
                 diag_count = cursor.fetchone()
-                extra_data['CRM_count'] = diag_count['count'] if diag_count else 0
+                extra_data['diagnostico_count'] = diag_count['count'] if diag_count else 0
             except Exception as e:
                 logger.warning(f"Erro ao buscar dados de sessões: {e}")
                 extra_data['chat_count'] = 0
                 extra_data['recent_sessions'] = []
-                extra_data['CRM_count'] = 0
+                extra_data['diagnostico_count'] = 0
 
         elif level <= 3:  # Admin/Mentor - permissões
             extra_data['permissions'] = {
@@ -5660,14 +5643,14 @@ async def get_mentorado_details(
         raise HTTPException(status_code=500, detail="Erro ao conectar ao banco")
 
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
 
         # Buscar dados do mentorado (sem JOIN - workaround libsql-client bug)
         cursor.execute("""
             SELECT user_id, username, email, registration_date as created_at,
                    profession, specialty, current_revenue, desired_revenue, admin_level
             FROM users
-            WHERE user_id = ? AND role = 'mentorado'
+            WHERE user_id = %s AND role = 'mentorado'
         """, (mentorado_id,))
         mentorado = cursor.fetchone()
 
@@ -5681,7 +5664,7 @@ async def get_mentorado_details(
             SELECT cs.session_id, cs.title, cs.created_at,
                    (SELECT COUNT(*) FROM chat_messages WHERE session_id = cs.session_id) as message_count
             FROM chat_sessions cs
-            WHERE cs.user_id = ?
+            WHERE cs.user_id = %s
             ORDER BY cs.created_at DESC
         """, (mentorado_id,))
         chat_sessions = cursor.fetchall()
@@ -5691,7 +5674,7 @@ async def get_mentorado_details(
             SELECT a.assessment_id, a.started_at as created_at, a.status,
                    a.overall_score, a.profile_type
             FROM assessments a
-            WHERE a.user_id = ?
+            WHERE a.user_id = %s
             ORDER BY a.started_at DESC
         """, (mentorado_id,))
         assessments = cursor.fetchall()
@@ -5732,10 +5715,10 @@ async def revert_mentorado_to_lead(
         raise HTTPException(status_code=500, detail="Erro ao conectar ao banco")
 
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
 
         # Verificar se é mentorado
-        cursor.execute("SELECT role, username, email FROM users WHERE user_id = ?", (mentorado_id,))
+        cursor.execute("SELECT role, username, email FROM users WHERE user_id = %s", (mentorado_id,))
         user = cursor.fetchone()
 
         if not user:
@@ -5748,13 +5731,13 @@ async def revert_mentorado_to_lead(
         cursor.execute("""
             UPDATE users
             SET role = 'lead', account_status = 'lead'
-            WHERE user_id = ?
+            WHERE user_id = %s
         """, (mentorado_id,))
 
         # Criar/atualizar estado CRM
         cursor.execute("""
             INSERT INTO crm_lead_state (lead_id, current_state, owner_team)
-            VALUES (?, 'novo', 'marketing')
+            VALUES (%s, 'novo', 'marketing')
             ON CONFLICT(lead_id) DO UPDATE SET
                 current_state = 'novo',
                 state_updated_at = datetime('now')
@@ -5799,12 +5782,12 @@ async def get_chat_messages_admin(
         raise HTTPException(status_code=500, detail="Erro ao conectar ao banco")
 
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
 
         cursor.execute("""
             SELECT role, content, created_at
             FROM chat_messages
-            WHERE session_id = ?
+            WHERE session_id = %s
             ORDER BY message_id ASC
         """, (session_id,))
         messages = cursor.fetchall()
@@ -5842,7 +5825,7 @@ async def get_assessment_details_admin(
         raise HTTPException(status_code=500, detail="Erro ao conectar ao banco")
 
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
 
         # Buscar assessment (dados estão na tabela assessments diretamente)
         cursor.execute("""
@@ -5850,7 +5833,7 @@ async def get_assessment_details_admin(
                    a.overall_score, a.profile_type, a.main_insights, a.action_plan,
                    a.strongest_area, a.weakest_area
             FROM assessments a
-            WHERE a.assessment_id = ?
+            WHERE a.assessment_id = %s
         """, (assessment_id,))
         assessment = cursor.fetchone()
 
@@ -5864,13 +5847,13 @@ async def get_assessment_details_admin(
         weakest_area_name = assessment.get('weakest_area')
 
         if strongest_area_name:
-            cursor.execute("SELECT area_name FROM diagnosis_areas WHERE area_key = ?", (strongest_area_name,))
+            cursor.execute("SELECT area_name FROM diagnosis_areas WHERE area_key = %s", (strongest_area_name,))
             row = cursor.fetchone()
             if row:
                 strongest_area_name = row['area_name']
 
         if weakest_area_name:
-            cursor.execute("SELECT area_name FROM diagnosis_areas WHERE area_key = ?", (weakest_area_name,))
+            cursor.execute("SELECT area_name FROM diagnosis_areas WHERE area_key = %s", (weakest_area_name,))
             row = cursor.fetchone()
             if row:
                 weakest_area_name = row['area_name']
@@ -5884,7 +5867,7 @@ async def get_assessment_details_admin(
                    aas.strengths, aas.improvements, aas.recommendations
             FROM assessment_area_scores aas
             JOIN diagnosis_areas da ON aas.area_key = da.area_key
-            WHERE aas.assessment_id = ?
+            WHERE aas.assessment_id = %s
             ORDER BY da.order_index
         """, (assessment_id,))
         area_scores = cursor.fetchall()
@@ -5934,10 +5917,10 @@ async def delete_mentorado(
         raise HTTPException(status_code=500, detail="Erro ao conectar ao banco")
 
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
 
         # Verificar se usuário existe e é mentorado
-        cursor.execute("SELECT user_id, username, role FROM users WHERE user_id = ?", (mentorado_id,))
+        cursor.execute("SELECT user_id, username, role FROM users WHERE user_id = %s", (mentorado_id,))
         user = cursor.fetchone()
 
         if not user:
@@ -5952,24 +5935,24 @@ async def delete_mentorado(
 
         # Deletar dados relacionados primeiro (para evitar problemas de FK)
         # Chat
-        cursor.execute("DELETE FROM chat_messages WHERE session_id IN (SELECT session_id FROM chat_sessions WHERE user_id = ?)", (mentorado_id,))
-        cursor.execute("DELETE FROM chat_sessions WHERE user_id = ?", (mentorado_id,))
+        cursor.execute("DELETE FROM chat_messages WHERE session_id IN (SELECT session_id FROM chat_sessions WHERE user_id = %s)", (mentorado_id,))
+        cursor.execute("DELETE FROM chat_sessions WHERE user_id = %s", (mentorado_id,))
 
         # Assessments (usa client_id, não user_id)
-        cursor.execute("DELETE FROM assessment_answers WHERE assessment_id IN (SELECT assessment_id FROM assessments WHERE client_id IN (SELECT client_id FROM clients WHERE user_id = ?))", (mentorado_id,))
-        cursor.execute("DELETE FROM assessment_area_scores WHERE assessment_id IN (SELECT assessment_id FROM assessments WHERE client_id IN (SELECT client_id FROM clients WHERE user_id = ?))", (mentorado_id,))
-        cursor.execute("DELETE FROM assessment_summaries WHERE assessment_id IN (SELECT assessment_id FROM assessments WHERE client_id IN (SELECT client_id FROM clients WHERE user_id = ?))", (mentorado_id,))
-        cursor.execute("DELETE FROM assessments WHERE client_id IN (SELECT client_id FROM clients WHERE user_id = ?)", (mentorado_id,))
+        cursor.execute("DELETE FROM assessment_answers WHERE assessment_id IN (SELECT assessment_id FROM assessments WHERE client_id IN (SELECT client_id FROM clients WHERE user_id = %s))", (mentorado_id,))
+        cursor.execute("DELETE FROM assessment_area_scores WHERE assessment_id IN (SELECT assessment_id FROM assessments WHERE client_id IN (SELECT client_id FROM clients WHERE user_id = %s))", (mentorado_id,))
+        cursor.execute("DELETE FROM assessment_summaries WHERE assessment_id IN (SELECT assessment_id FROM assessments WHERE client_id IN (SELECT client_id FROM clients WHERE user_id = %s))", (mentorado_id,))
+        cursor.execute("DELETE FROM assessments WHERE client_id IN (SELECT client_id FROM clients WHERE user_id = %s)", (mentorado_id,))
 
         # Client reports e clients
-        cursor.execute("DELETE FROM client_reports WHERE client_id IN (SELECT client_id FROM clients WHERE user_id = ?)", (mentorado_id,))
-        cursor.execute("DELETE FROM clients WHERE user_id = ?", (mentorado_id,))
+        cursor.execute("DELETE FROM client_reports WHERE client_id IN (SELECT client_id FROM clients WHERE user_id = %s)", (mentorado_id,))
+        cursor.execute("DELETE FROM clients WHERE user_id = %s", (mentorado_id,))
 
         # Tokens
-        cursor.execute("DELETE FROM refresh_tokens WHERE user_id = ?", (mentorado_id,))
+        cursor.execute("DELETE FROM refresh_tokens WHERE user_id = %s", (mentorado_id,))
 
         # Deletar o usuário
-        cursor.execute("DELETE FROM users WHERE user_id = ?", (mentorado_id,))
+        cursor.execute("DELETE FROM users WHERE user_id = %s", (mentorado_id,))
         conn.commit()
 
         cursor.close()
@@ -6006,7 +5989,7 @@ async def get_admin_statistics(user_id: int = Depends(get_user_from_token)):
         raise HTTPException(status_code=500, detail="Erro ao conectar ao banco")
 
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
 
         # Contagens básicas
         cursor.execute("SELECT COUNT(*) as total FROM users WHERE role = 'mentor'")
@@ -6016,7 +5999,7 @@ async def get_admin_statistics(user_id: int = Depends(get_user_from_token)):
         total_mentorados = cursor.fetchone()['total']
 
         cursor.execute("SELECT COUNT(*) as total FROM assessments WHERE status = 'completed'")
-        total_CRMs = cursor.fetchone()['total']
+        total_diagnosticos = cursor.fetchone()['total']
 
         cursor.execute("SELECT AVG(overall_score) as media FROM assessment_summaries")
         media_score = cursor.fetchone()['media'] or 0
@@ -6028,7 +6011,7 @@ async def get_admin_statistics(user_id: int = Depends(get_user_from_token)):
             AND strftime('%m', started_at) = strftime('%m', 'now')
             AND strftime('%Y', started_at) = strftime('%Y', 'now')
         """)
-        CRMs_este_mes = cursor.fetchone()['total']
+        diagnosticos_este_mes = cursor.fetchone()['total']
 
         # Top mentores - DESCONTINUADO (mentor_id removido)
         # Retornando lista vazia por enquanto
@@ -6042,8 +6025,8 @@ async def get_admin_statistics(user_id: int = Depends(get_user_from_token)):
             "data": {
                 "total_mentors": total_mentors,
                 "total_mentorados": total_mentorados,
-                "total_CRMs": total_CRMs,
-                "CRMs_este_mes": CRMs_este_mes,
+                "total_diagnosticos": total_diagnosticos,
+                "diagnosticos_este_mes": diagnosticos_este_mes,
                 "media_score_geral": float(media_score) if media_score else 0,
                 "top_mentores": top_mentores
             }
@@ -6075,7 +6058,7 @@ async def list_all_diagnoses(
         raise HTTPException(status_code=500, detail="Erro ao conectar ao banco")
 
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
         offset = (page - 1) * limit
 
         # Buscar diagnósticos com info do cliente e mentor
@@ -6094,7 +6077,7 @@ async def list_all_diagnoses(
             JOIN users u ON a.user_id = u.user_id
             LEFT JOIN assessment_summaries s ON a.assessment_id = s.assessment_id
             ORDER BY a.started_at DESC
-            LIMIT ? OFFSET ?
+            LIMIT %s OFFSET %s
         """, (limit, offset))
 
         diagnoses = cursor.fetchall()
@@ -6132,7 +6115,7 @@ async def get_diagnosis_details(
         raise HTTPException(status_code=500, detail="Erro ao conectar ao banco")
 
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
 
         # Buscar info do assessment
         cursor.execute("""
@@ -6153,7 +6136,7 @@ async def get_diagnosis_details(
             LEFT JOIN assessment_summaries s ON a.assessment_id = s.assessment_id
             LEFT JOIN diagnosis_areas strong ON s.strongest_area_id = strong.area_id
             LEFT JOIN diagnosis_areas weak ON s.weakest_area_id = weak.area_id
-            WHERE a.assessment_id = ?
+            WHERE a.assessment_id = %s
         """, (assessment_id,))
 
         assessment = cursor.fetchone()
@@ -6172,7 +6155,7 @@ async def get_diagnosis_details(
                 aas.recommendations
             FROM assessment_area_scores aas
             JOIN diagnosis_areas da ON aas.area_id = da.area_id
-            WHERE aas.assessment_id = ?
+            WHERE aas.assessment_id = %s
             ORDER BY da.area_order
         """, (assessment_id,))
 
@@ -6504,7 +6487,7 @@ async def download_artifact(
     Baixa um artefato específico do filesystem do usuário.
 
     Query params:
-    - path: Caminho do arquivo (ex: /artifacts/CRM.pdf)
+    - path: Caminho do arquivo (ex: /artifacts/diagnostico.pdf)
     """
     from core.agentfs_client import get_agentfs
     from core.agentfs_manager import get_agentfs_manager
@@ -6602,7 +6585,7 @@ async def get_my_agent_history(
         context = {}
         important_keys = [
             "ultima_busca", "preferencias", "contexto_sessao",
-            "ultimo_CRM", "ultimo_assessment"
+            "ultimo_diagnostico", "ultimo_assessment"
         ]
         for key in important_keys:
             try:
@@ -6757,19 +6740,19 @@ async def list_my_mentorados(
         raise HTTPException(status_code=500, detail="Erro ao conectar ao banco")
 
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
         offset = (page - 1) * per_page
 
         # Admin vê todos, mentor vê apenas seus
         if user_role == 'admin':
-            query = "SELECT * FROM vw_mentorados_mentores LIMIT ? OFFSET ?"
+            query = "SELECT * FROM vw_mentorados_mentores LIMIT %s OFFSET %s"
             params = (per_page, offset)
             count_query = "SELECT COUNT(*) as total FROM users WHERE role = 'mentorado'"
             count_params = ()
         else:
-            query = "SELECT * FROM vw_mentorados_mentores WHERE mentor_id = ? LIMIT ? OFFSET ?"
+            query = "SELECT * FROM vw_mentorados_mentores WHERE mentor_id = %s LIMIT %s OFFSET %s"
             params = (user_id, per_page, offset)
-            count_query = "SELECT COUNT(*) as total FROM users WHERE role = 'mentorado' AND mentor_id = ?"
+            count_query = "SELECT COUNT(*) as total FROM users WHERE role = 'mentorado' AND mentor_id = %s"
             count_params = (user_id,)
 
         cursor.execute(query, params)
@@ -6818,10 +6801,10 @@ async def get_mentor_statistics(user_id: int = Depends(get_user_from_token)):
         raise HTTPException(status_code=500, detail="Erro ao conectar ao banco")
 
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
 
         cursor.execute("""
-            SELECT * FROM vw_mentor_stats WHERE mentor_id = ?
+            SELECT * FROM vw_mentor_stats WHERE mentor_id = %s
         """, (user_id,))
 
         stats = cursor.fetchone()
@@ -6862,7 +6845,7 @@ async def list_available_mentors():
         raise HTTPException(status_code=500, detail="Erro ao conectar ao banco")
 
     try:
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
 
         # WORKAROUND: mentor_id removido
         cursor.execute("""

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-MCP Server para API do CRM
-Expõe os endpoints da API REST do backend CRM como ferramentas MCP
+MCP Server para API do Nanda
+Expõe os endpoints da API REST do backend Nanda como ferramentas MCP
 """
 
 import httpx
@@ -21,7 +21,7 @@ def get_client():
 
 @mcp.tool()
 def health_check() -> dict:
-    """Verifica se a API do CRM está online e saudável."""
+    """Verifica se a API do Nanda está online e saudável."""
     with get_client() as client:
         response = client.get("/health")
         return response.json()

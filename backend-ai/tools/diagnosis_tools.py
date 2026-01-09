@@ -1,7 +1,7 @@
 """
 Diagnosis Tools - Ferramentas para salvar diagnósticos de mentorados
 
-Permite que a CRM salve o diagnóstico estruturado após avaliar as respostas.
+Permite que a Nanda salve o diagnóstico estruturado após avaliar as respostas.
 """
 
 import json
@@ -189,7 +189,7 @@ async def save_diagnosis(args: Dict[str, Any]) -> Dict:
 async def get_diagnosis_areas(args: Dict[str, Any]) -> Dict:
     """
     Lista as áreas de diagnóstico disponíveis.
-    Útil para a CRM saber as area_keys corretas.
+    Útil para a Nanda saber as area_keys corretas.
     """
     import sys
     import os
