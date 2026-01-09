@@ -51,7 +51,6 @@ class UserActivityEntry(BaseModel):
     total_sessions: int = Field(0, description="Total de sessões")
     total_messages: int = Field(0, description="Total de mensagens")
     last_activity: Optional[str] = Field(None, description="Última atividade")
-    has_diagnosis: bool = Field(False, description="Se possui diagnóstico")
 
 
 class UserActivityReport(BaseModel):
@@ -62,7 +61,6 @@ class UserActivityReport(BaseModel):
 
     total_users: int = Field(..., ge=0, description="Total de usuários")
     active_users: int = Field(..., ge=0, description="Usuários com atividade recente")
-    users_with_diagnosis: int = Field(0, description="Usuários com diagnóstico")
 
     users: List[UserActivityEntry] = Field(
         ...,

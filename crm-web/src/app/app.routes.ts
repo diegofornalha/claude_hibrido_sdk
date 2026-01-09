@@ -48,43 +48,8 @@ export const routes: Routes = [
         canActivate: [roleGuard(['mentorado', 'mentor', 'admin'])]
       },
       {
-        path: 'CRM',
-        loadComponent: () => import('./pages/CRM/CRM').then(m => m.CRM),
-        canActivate: [roleGuard(['mentorado', 'mentor', 'admin'])]
-      },
-      {
-        path: 'CRM/recents',
-        loadComponent: () => import('./pages/CRM/CRM-recents').then(m => m.CRMRecents),
-        canActivate: [roleGuard(['mentorado', 'mentor', 'admin'])]
-      },
-      {
-        path: 'CRM/:sessionId',
-        loadComponent: () => import('./pages/CRM/CRM').then(m => m.CRM),
-        canActivate: [roleGuard(['mentorado', 'mentor', 'admin'])]
-      },
-      {
         path: 'llm-config',
         loadComponent: () => import('./pages/admin/llm-config/llm-config').then(m => m.LLMConfigComponent)
-      },
-      {
-        path: 'diagnosis',
-        children: [
-          {
-            path: 'result/:id',
-            loadComponent: () => import('./pages/mentorado/diagnosis-result/diagnosis-result').then(m => m.DiagnosisResult),
-            canActivate: [roleGuard(['mentorado', 'mentor', 'admin'])]
-          },
-          {
-            path: 'history',
-            loadComponent: () => import('./pages/mentorado/diagnosis-history/diagnosis-history').then(m => m.DiagnosisHistory),
-            canActivate: [roleGuard(['mentorado'])]
-          },
-          {
-            path: '',
-            redirectTo: '../chat',
-            pathMatch: 'full'
-          }
-        ]
       },
       {
         path: '',

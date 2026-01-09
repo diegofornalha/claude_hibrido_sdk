@@ -10,7 +10,6 @@ Todas as ferramentas agora usam prefixo mcp__platform__ ao invés de mcp__nanda_
 from claude_agent_sdk import create_sdk_mcp_server
 
 from .sql_tools import execute_sql_query
-from .diagnosis_tools import save_diagnosis, get_diagnosis_areas, get_user_diagnosis
 from .chat_tools import get_user_chat_sessions, get_session_user_info, update_user_profile
 from .agentfs_tools import get_agentfs_status, get_tool_call_stats, get_recent_tool_calls
 
@@ -22,11 +21,6 @@ platform_mcp_server = create_sdk_mcp_server(
     tools=[
         # SQL tools
         execute_sql_query,
-
-        # Diagnosis tools
-        save_diagnosis,
-        get_diagnosis_areas,
-        get_user_diagnosis,
 
         # Chat tools
         get_user_chat_sessions,
@@ -47,9 +41,6 @@ __all__ = [
     "platform_mcp_server",
     "nanda_mcp_server",  # Retrocompatibilidade
     "execute_sql_query",
-    "save_diagnosis",
-    "get_diagnosis_areas",
-    "get_user_diagnosis",
     "get_user_chat_sessions",
     "get_session_user_info",
     "update_user_profile",

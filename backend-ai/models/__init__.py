@@ -5,13 +5,6 @@ Define schemas que o Claude Agent SDK pode usar para garantir
 respostas estruturadas e validadas.
 """
 
-from .diagnosis_models import (
-    DiagnosisAreaScore,
-    DiagnosisSummary,
-    DiagnosisReport,
-    QuickDiagnosisOutput,
-)
-
 from .analysis_models import (
     DataAnalysisResult,
     SessionCostReport,
@@ -19,11 +12,6 @@ from .analysis_models import (
 )
 
 __all__ = [
-    # Diagnosis
-    "DiagnosisAreaScore",
-    "DiagnosisSummary",
-    "DiagnosisReport",
-    "QuickDiagnosisOutput",
     # Analysis
     "DataAnalysisResult",
     "SessionCostReport",

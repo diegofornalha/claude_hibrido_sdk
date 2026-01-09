@@ -3,12 +3,10 @@ Config Routes - Endpoints de configuração White Label
 
 Fornece endpoints públicos (sem auth) para:
 - Configuração de marca (nome, cores, logo)
-- Lista de áreas de diagnóstico
 - Features habilitadas
 
 E endpoints protegidos (admin) para:
 - CRUD de configurações
-- CRUD de áreas de diagnóstico
 - CRUD de agentes
 """
 
@@ -45,21 +43,9 @@ class BrandConfigResponse(BaseModel):
     webDomain: str
 
 
-class DiagnosisAreaResponse(BaseModel):
-    """Área de diagnóstico."""
-    id: int
-    key: str
-    name: str
-    description: Optional[str] = None
-    icon: str = "📊"
-    order: int = 0
-    isActive: bool = True
-
-
 class FeaturesResponse(BaseModel):
     """Features habilitadas."""
     crm: bool = True
-    diagnosis: bool = True
     chat: bool = True
 
 
@@ -67,7 +53,6 @@ class FullConfigResponse(BaseModel):
     """Configuração completa."""
     brand: BrandConfigResponse
     features: FeaturesResponse
-    diagnosisAreas: List[DiagnosisAreaResponse]
 
 
 class BrandConfigUpdate(BaseModel):
@@ -81,24 +66,6 @@ class BrandConfigUpdate(BaseModel):
     secondaryColor: Optional[str] = Field(None, pattern=r'^#[0-9A-Fa-f]{6}$')
     logoUrl: Optional[str] = None
     faviconUrl: Optional[str] = None
-
-
-class DiagnosisAreaCreate(BaseModel):
-    """Criar área de diagnóstico."""
-    key: str = Field(..., min_length=1, max_length=50)
-    name: str = Field(..., min_length=1, max_length=100)
-    description: Optional[str] = Field(None, max_length=500)
-    icon: str = Field("📊", max_length=10)
-    order: int = Field(0, ge=0)
-
-
-class DiagnosisAreaUpdate(BaseModel):
-    """Atualizar área de diagnóstico."""
-    name: Optional[str] = Field(None, min_length=1, max_length=100)
-    description: Optional[str] = Field(None, max_length=500)
-    icon: Optional[str] = Field(None, max_length=10)
-    order: Optional[int] = Field(None, ge=0)
-    isActive: Optional[bool] = None
 
 
 class BusinessContextUpdate(BaseModel):
@@ -191,24 +158,8 @@ async def get_features(
     """
     return FeaturesResponse(
         crm=service.is_feature_enabled("crm", tenant_id),
-        diagnosis=service.is_feature_enabled("diagnosis", tenant_id),
         chat=service.is_feature_enabled("chat", tenant_id),
     )
-
-
-@router.get("/diagnosis-areas", response_model=List[DiagnosisAreaResponse])
-async def get_diagnosis_areas(
-    tenant_id: str = "default",
-    active_only: bool = True,
-    service: TenantService = Depends(get_service)
-):
-    """
-    Obtém áreas de diagnóstico (público).
-
-    Usado pelo frontend para exibir as áreas disponíveis.
-    """
-    areas = service.get_diagnosis_areas(tenant_id, active_only)
-    return [area.to_dict() for area in areas]
 
 
 @router.get("/full", response_model=FullConfigResponse)
@@ -219,19 +170,16 @@ async def get_full_config(
     """
     Obtém configuração completa (público).
 
-    Retorna brand, features e diagnosis areas em uma única chamada.
+    Retorna brand e features em uma única chamada.
     """
     brand = service.get_brand(tenant_id)
-    areas = service.get_diagnosis_areas(tenant_id)
 
     return FullConfigResponse(
         brand=BrandConfigResponse(**brand.to_dict()),
         features=FeaturesResponse(
             crm=service.is_feature_enabled("crm", tenant_id),
-            diagnosis=service.is_feature_enabled("diagnosis", tenant_id),
             chat=service.is_feature_enabled("chat", tenant_id),
         ),
-        diagnosisAreas=[DiagnosisAreaResponse(**area.to_dict()) for area in areas],
     )
 
 
@@ -399,162 +347,6 @@ async def update_business_context(
             teamTerm=brand.team_term,
             audienceGoals=brand.audience_goals,
         )
-
-    finally:
-        conn.close()
-
-
-@router.post("/diagnosis-areas", response_model=DiagnosisAreaResponse, status_code=201)
-async def create_diagnosis_area(
-    area: DiagnosisAreaCreate,
-    tenant_id: str = "default",
-    current_user: dict = Depends(get_current_user),
-    service: TenantService = Depends(get_service)
-):
-    """
-    Cria nova área de diagnóstico (admin only).
-    """
-    if current_user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
-
-    import sqlite3
-    conn = sqlite3.connect(service._db_path)
-
-    try:
-        cursor = conn.execute("""
-            INSERT INTO diagnosis_areas (tenant_id, area_key, area_name, description, area_icon, order_index)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (tenant_id, area.key, area.name, area.description, area.icon, area.order))
-        conn.commit()
-
-        area_id = cursor.lastrowid
-        service.clear_cache(tenant_id)
-        logger.info(f"Diagnosis area {area.key} created for tenant {tenant_id}")
-
-        return DiagnosisAreaResponse(
-            id=area_id,
-            key=area.key,
-            name=area.name,
-            description=area.description,
-            icon=area.icon,
-            order=area.order,
-            isActive=True,
-        )
-
-    except sqlite3.IntegrityError:
-        raise HTTPException(status_code=400, detail=f"Area key '{area.key}' already exists")
-    finally:
-        conn.close()
-
-
-@router.put("/diagnosis-areas/{area_id}", response_model=DiagnosisAreaResponse)
-async def update_diagnosis_area(
-    area_id: int,
-    update: DiagnosisAreaUpdate,
-    tenant_id: str = "default",
-    current_user: dict = Depends(get_current_user),
-    service: TenantService = Depends(get_service)
-):
-    """
-    Atualiza área de diagnóstico (admin only).
-    """
-    if current_user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
-
-    import sqlite3
-    conn = sqlite3.connect(service._db_path)
-    conn.row_factory = sqlite3.Row
-
-    try:
-        # Verificar se existe
-        cursor = conn.execute(
-            "SELECT * FROM diagnosis_areas WHERE area_id = ? AND tenant_id = ?",
-            (area_id, tenant_id)
-        )
-        existing = cursor.fetchone()
-        if not existing:
-            raise HTTPException(status_code=404, detail="Diagnosis area not found")
-
-        # Construir update
-        updates = []
-        values = []
-
-        if update.name is not None:
-            updates.append("area_name = ?")
-            values.append(update.name)
-        if update.description is not None:
-            updates.append("description = ?")
-            values.append(update.description)
-        if update.icon is not None:
-            updates.append("area_icon = ?")
-            values.append(update.icon)
-        if update.order is not None:
-            updates.append("order_index = ?")
-            values.append(update.order)
-        if update.isActive is not None:
-            updates.append("is_active = ?")
-            values.append(1 if update.isActive else 0)
-
-        if not updates:
-            raise HTTPException(status_code=400, detail="No fields to update")
-
-        values.extend([area_id, tenant_id])
-        query = f"UPDATE diagnosis_areas SET {', '.join(updates)} WHERE area_id = ? AND tenant_id = ?"
-        conn.execute(query, values)
-        conn.commit()
-
-        service.clear_cache(tenant_id)
-
-        # Retornar atualizado
-        cursor = conn.execute(
-            "SELECT * FROM diagnosis_areas WHERE area_id = ?", (area_id,)
-        )
-        row = cursor.fetchone()
-
-        return DiagnosisAreaResponse(
-            id=row["area_id"],
-            key=row["area_key"],
-            name=row["area_name"],
-            description=row["description"],
-            icon=row["area_icon"] or "📊",
-            order=row["order_index"] or 0,
-            isActive=bool(row["is_active"]) if row["is_active"] is not None else True,
-        )
-
-    finally:
-        conn.close()
-
-
-@router.delete("/diagnosis-areas/{area_id}", status_code=204)
-async def delete_diagnosis_area(
-    area_id: int,
-    tenant_id: str = "default",
-    current_user: dict = Depends(get_current_user),
-    service: TenantService = Depends(get_service)
-):
-    """
-    Deleta área de diagnóstico (admin only).
-
-    Na verdade faz soft delete (is_active = 0).
-    """
-    if current_user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
-
-    import sqlite3
-    conn = sqlite3.connect(service._db_path)
-
-    try:
-        cursor = conn.execute(
-            "UPDATE diagnosis_areas SET is_active = 0 WHERE area_id = ? AND tenant_id = ?",
-            (area_id, tenant_id)
-        )
-        conn.commit()
-
-        if cursor.rowcount == 0:
-            raise HTTPException(status_code=404, detail="Diagnosis area not found")
-
-        service.clear_cache(tenant_id)
-        logger.info(f"Diagnosis area {area_id} deleted for tenant {tenant_id}")
 
     finally:
         conn.close()

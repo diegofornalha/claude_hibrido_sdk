@@ -4,6 +4,7 @@ import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NivelService, LevelUserDetailResponse, LevelConfig } from '../../../core/services/nivel.service';
 import { AdminService } from '../../../core/services/admin.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { SkeletonComponent } from '../../../core/components/skeleton.component';
 
 type TabType = 'info' | 'activity' | 'permissions';
@@ -100,6 +101,18 @@ type TabType = 'info' | 'activity' | 'permissions';
                     </svg>
                     {{ resettingPassword() ? 'Resetando...' : 'Resetar Senha' }}
                   </button>
+                  @if (isSuperAdmin() && userData()!.user.user_id !== currentUserId()) {
+                    <button
+                      (click)="confirmRemoveUser()"
+                      [disabled]="removingUser()"
+                      class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition flex items-center gap-2"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                      </svg>
+                      {{ removingUser() ? 'Removendo...' : 'Remover' }}
+                    </button>
+                  }
                 </div>
               </div>
               <div class="text-right">
@@ -304,6 +317,7 @@ export class NivelDetail implements OnInit {
   private readonly router = inject(Router);
   readonly nivelService = inject(NivelService);
   private readonly adminService = inject(AdminService);
+  private readonly authService = inject(AuthService);
 
   readonly level = signal(0);
   readonly userId = signal(0);
@@ -314,7 +328,12 @@ export class NivelDetail implements OnInit {
   readonly success = signal<string | null>(null);
   readonly resettingPassword = signal(false);
   readonly updatingLevel = signal(false);
+  readonly removingUser = signal(false);
   readonly activeTab = signal<TabType>('info');
+
+  // Computed para verificar se é super admin (nível 0)
+  readonly isSuperAdmin = computed(() => this.authService.user()?.admin_level === 0);
+  readonly currentUserId = computed(() => this.authService.user()?.user_id || 0);
 
   ngOnInit(): void {
     // Carregar configs primeiro para popular o dropdown
@@ -451,6 +470,35 @@ export class NivelDetail implements OnInit {
         this.updatingLevel.set(false);
         this.error.set('Erro ao atualizar nivel');
         console.error('Erro ao atualizar nivel:', err);
+      }
+    });
+  }
+
+  confirmRemoveUser(): void {
+    const user = this.userData()?.user;
+    if (!user) return;
+
+    this.removingUser.set(true);
+    this.error.set(null);
+    this.success.set(null);
+
+    this.adminService.deleteUser(user.user_id).subscribe({
+      next: (response) => {
+        this.removingUser.set(false);
+        if (response.success) {
+          this.success.set(response.message || 'Usuário removido com sucesso');
+          // Redirecionar para a lista do nível após 1 segundo
+          setTimeout(() => {
+            this.router.navigate(['/admin/niveis', this.level()]);
+          }, 1000);
+        } else {
+          this.error.set(response.message || 'Erro ao remover usuário');
+        }
+      },
+      error: (err) => {
+        this.removingUser.set(false);
+        this.error.set(err.error?.detail || 'Erro ao remover usuário');
+        console.error('Erro ao remover usuário:', err);
       }
     });
   }

@@ -5032,7 +5032,7 @@ async def assign_mentor_to_mentorado(
 def generate_temp_password(_length=8):
     """Retorna senha temporária padrão"""
     # TODO: Implementar geração de senha aleatória com base no length
-    return "nanda26"
+    return "provisoria"
 
 
 @app.post("/api/admin/reset-user-password/{target_user_id}", response_model=dict)
@@ -5969,6 +5969,97 @@ async def delete_mentorado(
         raise
     except Exception as e:
         logger.error(f"Erro ao remover mentorado: {e}")
+        if conn:
+            conn.close()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/admin/users/{target_user_id}", response_model=dict)
+async def delete_user_by_admin(
+    target_user_id: int,
+    user_id: int = Depends(get_user_from_token)
+):
+    """
+    Remove um usuário do sistema (apenas super admin - nível 0)
+
+    Super admin pode deletar qualquer usuário, exceto a si mesmo.
+    """
+    # Verificar se é super admin (nível 0)
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Erro ao conectar ao banco")
+
+    try:
+        cursor = conn.cursor(dictionary=True)
+
+        # Verificar nível do admin que está fazendo a operação
+        cursor.execute("SELECT admin_level FROM users WHERE user_id = %s", (user_id,))
+        admin = cursor.fetchone()
+
+        if not admin or admin.get('admin_level') != 0:
+            cursor.close()
+            conn.close()
+            raise HTTPException(status_code=403, detail="Apenas Super Admin (nível 0) pode remover usuários")
+
+        # Não pode deletar a si mesmo
+        if user_id == target_user_id:
+            cursor.close()
+            conn.close()
+            raise HTTPException(status_code=400, detail="Você não pode remover sua própria conta por aqui")
+
+        # Verificar se usuário alvo existe
+        cursor.execute("SELECT user_id, username, email FROM users WHERE user_id = %s", (target_user_id,))
+        target_user = cursor.fetchone()
+
+        if not target_user:
+            cursor.close()
+            conn.close()
+            raise HTTPException(status_code=404, detail="Usuário não encontrado")
+
+        # Log de auditoria
+        logger.warning(
+            f"ADMIN DELETE: admin_user_id={user_id} deleting target_user_id={target_user_id}, "
+            f"username={target_user['username']}, email={target_user['email']}"
+        )
+
+        # Deletar dados relacionados (ignorar erros de tabelas inexistentes)
+        delete_queries = [
+            "DELETE FROM chat_messages WHERE session_id IN (SELECT session_id FROM chat_sessions WHERE user_id = %s)",
+            "DELETE FROM chat_sessions WHERE user_id = %s",
+            "DELETE FROM assessment_answers WHERE assessment_id IN (SELECT assessment_id FROM assessments WHERE client_id IN (SELECT client_id FROM clients WHERE user_id = %s))",
+            "DELETE FROM assessment_area_scores WHERE assessment_id IN (SELECT assessment_id FROM assessments WHERE client_id IN (SELECT client_id FROM clients WHERE user_id = %s))",
+            "DELETE FROM assessment_summaries WHERE assessment_id IN (SELECT assessment_id FROM assessments WHERE client_id IN (SELECT client_id FROM clients WHERE user_id = %s))",
+            "DELETE FROM assessments WHERE client_id IN (SELECT client_id FROM clients WHERE user_id = %s)",
+            "DELETE FROM client_reports WHERE client_id IN (SELECT client_id FROM clients WHERE user_id = %s)",
+            "DELETE FROM clients WHERE user_id = %s",
+            "DELETE FROM refresh_tokens WHERE user_id = %s",
+        ]
+        for query in delete_queries:
+            try:
+                cursor.execute(query, (target_user_id,))
+            except Exception as e:
+                logger.debug(f"Ignorando erro ao deletar (tabela pode não existir): {e}")
+
+        # Deletar o usuário
+        cursor.execute("DELETE FROM users WHERE user_id = %s", (target_user_id,))
+        conn.commit()
+
+        cursor.close()
+        conn.close()
+
+        logger.info(f"ADMIN DELETE: User {target_user_id} ({target_user['username']}) deleted by admin {user_id}")
+
+        return {
+            "success": True,
+            "message": f"Usuário '{target_user['username']}' removido com sucesso"
+        }
+
+    except HTTPException:
+        if conn:
+            conn.close()
+        raise
+    except Exception as e:
+        logger.error(f"Erro ao remover usuário: {e}")
         if conn:
             conn.close()
         raise HTTPException(status_code=500, detail=str(e))

@@ -273,6 +273,15 @@ export class AdminService {
       { admin_level: adminLevel }
     );
   }
+
+  /**
+   * Remove um usuário do sistema (super admin only - nível 0)
+   */
+  deleteUser(userId: number): Observable<{ success: boolean; message: string }> {
+    return this.http.delete<{ success: boolean; message: string }>(
+      `${this.baseUrl}/api/admin/users/${userId}`
+    );
+  }
 }
 
 export interface DiagnosisSummary {

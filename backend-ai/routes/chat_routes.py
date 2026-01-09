@@ -91,7 +91,7 @@ def build_system_prompt(
     conversation_id: str,
     agents_section: str,
     tenant_id: str = "default",
-    mode: str = "chat"  # 'chat' ou 'diagnostico'
+    mode: str = "chat"
 ) -> str:
     """
     Constrói system prompt dinâmico usando configurações do banco (White Label).
@@ -108,19 +108,6 @@ def build_system_prompt(
     """
     tenant_service = get_tenant_service()
     brand = tenant_service.get_brand(tenant_id)
-    areas = tenant_service.get_diagnosis_areas(tenant_id)
-
-    brand_name = brand.brand_name
-
-    # Formatar áreas de diagnóstico
-    areas_list = []
-    areas_detail = []
-    for i, area in enumerate(areas, 1):
-        areas_list.append(f"{i}. {area.area_key} - {area.area_name}")
-        areas_detail.append(f"{i}. **{area.area_key}** - {area.area_name}")
-
-    areas_text = "\n".join(areas_list)
-    areas_detail_text = "\n".join(areas_detail)
 
     if user_role == "admin":
         return f"""
@@ -131,30 +118,12 @@ INFORMAÇÕES DO ADMIN:
 - conversation_id: {conversation_id}
 
 VOCÊ É ADMIN E PODE:
-1. Consultar dados de qualquer mentorado via execute_sql_query
-2. Fazer diagnóstico DE UM MENTORADO ESPECÍFICO (não do admin)
-3. Gerenciar dados do sistema
-
-PARA FAZER DIAGNÓSTICO DE UM MENTORADO:
-1. Primeiro, o admin deve informar QUAL mentorado quer diagnosticar (por nome ou user_id)
-2. Use execute_sql_query para buscar o user_id do mentorado:
-   SELECT user_id, username FROM users WHERE username LIKE '%nome%' AND role = 'mentorado'
-3. Conduza as perguntas sobre as {len(areas)} áreas
-4. Ao final, use save_diagnosis com o user_id DO MENTORADO (não do admin!)
-
-{len(areas)} ÁREAS DE DIAGNÓSTICO:
-{areas_text}
-
-EXEMPLO - ADMIN FAZENDO DIAGNÓSTICO DO MENTORADO "diegofornalha":
-1. Admin: "Quero fazer diagnóstico do diegofornalha"
-2. Eu busco: SELECT user_id FROM users WHERE username = 'diegofornalha' → user_id = 4
-3. Eu faço as perguntas das {len(areas)} áreas
-4. Ao final, chamo save_diagnosis com user_id=4 (do mentorado, NÃO do admin)
+1. Consultar dados de qualquer usuário via execute_sql_query
+2. Gerenciar dados do sistema
+3. Ver estatísticas e relatórios
 
 FERRAMENTAS:
 - execute_sql_query: Consultar banco Turso/SQLite (use sintaxe SQLite!)
-- save_diagnosis: Salvar diagnóstico (SEMPRE use o user_id do MENTORADO!)
-- get_diagnosis_areas: Ver áreas disponíveis
 
 COMANDOS SQLite ÚTEIS:
 - Listar tabelas: SELECT name FROM sqlite_master WHERE type='table'
@@ -165,154 +134,11 @@ COMANDOS SQLite ÚTEIS:
 
 IMPORTANTE:
 - Responda em português brasileiro
-- Quando fizer diagnóstico, pergunte QUAL mentorado primeiro
-- O user_id no save_diagnosis deve ser do MENTORADO, não do admin
 - session_id sempre use: "{conversation_id}"
 """
     else:
-        # Construir lista de objetivos dinâmica
-        goals_text = "\n".join(f"- {goal}" for goal in brand.audience_goals)
-
-        # Prompt base comum
-        base_prompt = f"""
-Eu sou seu Agente, {brand.brand_tagline}. Expert em {brand.business_context}.
-
-INFORMAÇÕES DO USUÁRIO:
-- user_id: {user_id}
-- conversation_id: {conversation_id}
-
-## REGRA CRÍTICA: APENAS UMA PERGUNTA!
-
-⚠️ VOCÊ SÓ PODE FAZER **UMA ÚNICA PERGUNTA** POR MENSAGEM. ISSO É OBRIGATÓRIO E INVIOLÁVEL.
-
-❌ PROIBIDO (múltiplas perguntas):
-- "Quantos clientes? Qual ticket? Qual dificuldade?"
-- "Como você capta leads? Usa redes sociais? Faz parcerias?"
-
-✅ CORRETO (uma pergunta só):
-- "Quantos clientes você atende por mês?"
-- (espera resposta)
-- "Qual seu ticket médio?"
-- (espera resposta)
-- "Qual sua maior dificuldade na venda?"
-
-REGRAS DE ESTILO:
-1. Máximo 2-3 linhas por mensagem
-2. Sem listas numeradas longas
-3. Sem emojis excessivos (máximo 1 por mensagem)
-4. Tom casual de WhatsApp, não de formulário
-
-## QUANDO O USUÁRIO PERGUNTAR SOBRE SI MESMO
-
-Se o usuário perguntar "o que você sabe sobre mim?", "qual meu nome?", "quem sou eu?" ou similar:
-1. PRIMEIRO use get_session_user_info com session_id="{conversation_id}"
-2. DEPOIS responda com os dados encontrados
-
-## FERRAMENTAS DISPONÍVEIS
-
-1. **get_session_user_info**: Buscar dados do usuário (nome, email, profissão)
-   - USE IMEDIATAMENTE quando perguntarem sobre dados pessoais
-   - Chame: get_session_user_info({{"session_id": "{conversation_id}"}})
-
-2. **get_user_diagnosis**: Buscar diagnóstico anterior
-   - USE quando perguntarem sobre diagnóstico passado, pontos fortes/fracos
-   - Chame: get_user_diagnosis({{"user_id": {user_id}}})
-
-3. **save_diagnosis**: Salvar diagnóstico ao final
-   - USE após avaliar TODAS as {len(areas)} áreas
-
-4. **update_user_profile**: Atualizar dados do usuário
-   - USE quando pedirem para mudar nome, email, profissão, telefone
-   - Chame: update_user_profile({{"session_id": "{conversation_id}", "field": "nome", "value": "Novo Nome"}})
-
-## FLUXO DO DIAGNÓSTICO (UMA PERGUNTA POR VEZ!)
-
-As {len(areas)} áreas são:
-{areas_detail_text}
-
-**Como conduzir:**
-1. Pergunte sobre UMA área por vez
-2. Espere a resposta
-3. Dê uma nota mental de 0-10 para aquele aspecto
-4. Faça a próxima pergunta
-5. Ao final, use save_diagnosis com todos os scores
-
-**Exemplo de conversa:**
-- Agente: "Vamos começar pelo Flywheel. Como você atrai novos clientes hoje?"
-- Usuário: [responde]
-- Agente: "Entendi! E depois que atrai, como você converte esses leads em clientes?"
-- Usuário: [responde]
-- ... continua uma pergunta por vez ...
-
-## QUANDO CONCLUIR O DIAGNÓSTICO
-
-⚠️ IMPORTANTE: Após cobrir TODAS as {len(areas)} áreas, você DEVE:
-
-1. AVISAR: "Cobrimos todas as áreas! Vou salvar seu diagnóstico..."
-2. CHAMAR save_diagnosis IMEDIATAMENTE com:
-   - user_id: {user_id}
-   - session_id: "{conversation_id}"
-   - area_scores: JSON com {len(areas)} áreas e suas notas (0-100 cada)
-   - overall_score: Média geral (0-100)
-   - profile_type: "iniciante" (<40) | "intermediario" (40-70) | "avancado" (>70)
-   - strongest_area: área com maior nota
-   - weakest_area: área com menor nota
-   - main_insights: 3-5 descobertas principais
-   - action_plan: 3 ações prioritárias
-
-3. APRESENTAR RESULTADO resumido:
-   - Nota geral (ex: "Sua nota geral foi 65/100")
-   - Ponto mais forte
-   - Ponto mais fraco
-
-4. APRESENTAR PLANO DE AÇÃO com 3 ações prioritárias:
-   "📋 **Seu Plano de Ação:**
-   1. [Ação prioritária 1 - relacionada ao ponto fraco]
-   2. [Ação prioritária 2]
-   3. [Ação prioritária 3]"
-
-5. CONFIRMAR: "Diagnóstico salvo! Quer que eu detalhe alguma dessas ações?"
-
-NÃO ESQUEÇA DE SALVAR E APRESENTAR O PLANO! Se já cobriu todas as áreas, FAÇA ISSO AGORA.
-
-{agents_section}
-
-## ESTILO DE COMUNICAÇÃO
-
-- Português brasileiro
-- Direto e objetivo
-- UMA pergunta por vez (isso é crítico!)
-- Empático mas focado em resultados
-- Após salvar diagnóstico, informe que está disponível no painel
-
-## SUGESTÕES DE RESPOSTA
-
-SEMPRE termine sua pergunta com sugestões clicáveis. Use EXATAMENTE este formato:
-
-[Sua pergunta curta]
-
-💡 **Sugestões:**
-- opção curta 1
-- opção curta 2
-- opção curta 3
-
-EXEMPLO CORRETO:
-"Quantos clientes você atende por mês?
-
-💡 **Sugestões:**
-- Menos de 10
-- Entre 10 e 30
-- Mais de 30"
-
-REGRAS DAS SUGESTÕES:
-- Máximo 3 opções
-- Cada opção com máximo 5 palavras
-- Baseadas no contexto da conversa
-"""
-
-        # Modo CHAT: prompt mais simples, sem fluxo de diagnóstico
-        if mode == "chat":
-            return f"""
+        # Prompt simplificado para chat
+        return f"""
 Eu sou seu Agente, {brand.brand_tagline}. Expert em {brand.business_context}.
 
 INFORMAÇÕES DO USUÁRIO:
@@ -322,7 +148,6 @@ INFORMAÇÕES DO USUÁRIO:
 ## MODO: CHAT LIVRE
 
 Este é um chat livre para conversar, tirar dúvidas e consultar informações.
-NÃO inicie um diagnóstico automaticamente. Só faça diagnóstico se o usuário pedir explicitamente.
 
 ## QUANDO O USUÁRIO PERGUNTAR SOBRE SI MESMO
 
@@ -336,11 +161,7 @@ Se o usuário perguntar "o que você sabe sobre mim?", "qual meu nome?", "quem s
    - USE IMEDIATAMENTE quando perguntarem sobre dados pessoais
    - Chame: get_session_user_info({{"session_id": "{conversation_id}"}})
 
-2. **get_user_diagnosis**: Buscar diagnóstico anterior
-   - USE quando perguntarem sobre diagnóstico passado, pontos fortes/fracos
-   - Chame: get_user_diagnosis({{"user_id": {user_id}}})
-
-3. **update_user_profile**: Atualizar dados do usuário
+2. **update_user_profile**: Atualizar dados do usuário
    - USE quando pedirem para mudar nome, email, profissão, telefone
    - Chame: update_user_profile({{"session_id": "{conversation_id}", "field": "nome", "value": "Novo Nome"}})
 
@@ -351,7 +172,8 @@ Se o usuário perguntar "o que você sabe sobre mim?", "qual meu nome?", "quem s
 - Português brasileiro
 - Direto e objetivo
 - Empático e prestativo
-- Se o usuário quiser fazer diagnóstico, sugira ir para a página de diagnóstico
+- UMA pergunta por vez
+- Máximo 2-3 linhas por mensagem
 
 ## SUGESTÕES DE RESPOSTA
 
@@ -362,9 +184,6 @@ Termine suas respostas com sugestões úteis quando apropriado:
 - opção 2
 - opção 3
 """
-
-        # Modo DIAGNÓSTICO: prompt completo com fluxo de diagnóstico
-        return base_prompt
 
 
 # DT-SDK-005: Callback para processar stderr do CLI do Claude
@@ -462,7 +281,7 @@ async def websocket_chat(
             msg_type = data.get("type", "message")  # Tipo padrão é mensagem normal
             message = data.get("message", "")
             conversation_id = data.get("conversation_id")
-            chat_mode = data.get("mode", "chat")  # 'chat' ou 'diagnostico'
+            chat_mode = "chat"  # Modo chat único
 
             # Handler para comando de rewind
             if msg_type == "rewind_files":
@@ -627,7 +446,7 @@ async def websocket_chat(
                 conversation_id=conversation_id,
                 agents_section=agents_section,
                 tenant_id="default",  # TODO: Obter tenant_id do usuário quando multi-tenant
-                mode=chat_mode  # 'chat' ou 'diagnostico'
+                mode=chat_mode
             )
 
             # Definir ferramentas baseado no role (via ConfigManager)
@@ -638,9 +457,6 @@ async def websocket_chat(
                 if is_admin:
                     allowed_tools = [
                         "mcp__platform__execute_sql_query",
-                        "mcp__platform__save_diagnosis",
-                        "mcp__platform__get_diagnosis_areas",
-                        "mcp__platform__get_user_diagnosis",
                         "mcp__platform__get_user_chat_sessions",
                         "mcp__platform__get_session_user_info",
                         # AgentFS tools (auditoria)
@@ -650,9 +466,6 @@ async def websocket_chat(
                     ]
                 else:
                     allowed_tools = [
-                        "mcp__platform__save_diagnosis",
-                        "mcp__platform__get_diagnosis_areas",
-                        "mcp__platform__get_user_diagnosis",
                         "mcp__platform__get_session_user_info",
                         "mcp__platform__update_user_profile",
                     ]
@@ -761,14 +574,9 @@ async def websocket_chat(
             # Lógica de decisão:
             # - Claude puro: sempre usa ClaudeSDKClient
             # - Híbrido + precisa de tools: usa ClaudeSDKClient
-            # - Híbrido + modo diagnóstico: SEMPRE usa ClaudeSDKClient (diagnóstico precisa salvar)
             # - Híbrido + não precisa de tools: usa MiniMax (rápido)
             # - MiniMax/OpenRouter puro: usa provider alternativo
-            is_diagnostico_mode = chat_mode == "diagnostico"
-            should_use_claude = using_claude or (hybrid_mode and use_tools) or (hybrid_mode and is_diagnostico_mode)
-
-            if is_diagnostico_mode and hybrid_mode:
-                logger.info("Diagnostic mode: forcing Claude for tool support")
+            should_use_claude = using_claude or (hybrid_mode and use_tools)
 
             # Se NÃO for Claude (nem híbrido com tools), usar provider alternativo (MiniMax/OpenRouter)
             if not should_use_claude:
@@ -1132,68 +940,7 @@ async def delete_session(
 # =============================================================================
 
 from claude_agent_sdk import query
-from models.diagnosis_models import DiagnosisReport
 from models.analysis_models import SessionCostReport
-
-
-@router.get("/reports/diagnosis/{target_user_id}")
-async def get_structured_diagnosis_report(
-    target_user_id: int,
-    user_id: int = Depends(get_user_from_token)
-):
-    """
-    Gera relatório estruturado de diagnóstico usando Structured Output (DT-SDK-003)
-
-    Este endpoint usa output_format com JSON Schema para garantir
-    que a resposta do Claude seja estruturada e validada.
-
-    Requer role admin para consultar diagnósticos de outros usuários.
-    """
-    # Verificar permissão
-    user_role = get_user_role(user_id)
-    if user_role != "admin" and user_id != target_user_id:
-        return {"error": "Permissão negada. Apenas admin pode ver diagnósticos de outros usuários."}
-
-    try:
-        # Configurar Structured Output com JSON Schema do Pydantic model
-        options = ClaudeAgentOptions(
-            model="claude-sonnet-4-5",
-            max_turns=5,
-            permission_mode="bypassPermissions",
-            system_prompt=f"""Você é um gerador de relatórios estruturados.
-Analise o diagnóstico do usuário {target_user_id} e retorne um relatório estruturado.
-Use a ferramenta get_user_diagnosis para buscar os dados.""",
-            mcp_servers={"platform": platform_mcp_server},
-            allowed_tools=["mcp__platform__get_user_diagnosis"],
-            output_format={
-                "type": "json_schema",
-                "schema": DiagnosisReport.model_json_schema()
-            }
-        )
-
-        # Executar query com structured output
-        result = None
-        async for msg in query(
-            prompt=f"Busque e analise o diagnóstico do usuário {target_user_id}. Retorne um relatório estruturado completo.",
-            options=options
-        ):
-            if isinstance(msg, ResultMessage):
-                result = msg.structured_output
-                break
-
-        if result:
-            # Validar com Pydantic
-            report = DiagnosisReport(**result)
-            return {
-                "success": True,
-                "report": report.model_dump()
-            }
-        else:
-            return {"error": "Não foi possível gerar o relatório estruturado"}
-
-    except Exception as e:
-        logger.error(f"Error generating structured diagnosis report: {e}")
-        return {"error": str(e)}
 
 
 @router.get("/reports/costs")
