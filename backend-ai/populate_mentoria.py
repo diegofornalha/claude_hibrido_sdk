@@ -1,6 +1,6 @@
 """
 Script para popular banco com dados de teste para sistema de mentoria
-Cria: 1 admin (Nanda), 3 mentores, 9 mentorados (3 por mentor)
+Cria: 1 admin (CRM), 3 mentores, 9 mentorados (3 por mentor)
 """
 
 import sqlite.connector
@@ -54,9 +54,9 @@ def main():
         password_hash = hash_password_simple('password123')
 
         # =====================================================
-        # 1. CRIAR ADMIN (Nanda)
+        # 1. CRIAR ADMIN (CRM)
         # =====================================================
-        print("\n👑 Criando Admin (Nanda)...")
+        print("\n👑 Criando Admin (CRM)...")
 
         cursor.execute("""
             INSERT INTO users (username, email, password_hash, phone_number, account_status, role)
@@ -71,7 +71,7 @@ def main():
             'admin'
         ))
         conn.commit()
-        print("   ✅ Admin Nanda criada")
+        print("   ✅ Admin CRM criada")
 
         # =====================================================
         # 2. CRIAR 3 MENTORES

@@ -1,5 +1,5 @@
 /**
- * Modelos de Autenticação - Nanda
+ * Modelos de Autenticação - CRM
  * Baseados nos schemas Pydantic do backend FastAPI
  */
 

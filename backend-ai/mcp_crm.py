@@ -1183,7 +1183,7 @@ def save_diagnosis_human(
     Args:
         lead_id: ID do lead
         meeting_id: ID da reunião/call onde foi coletado
-        diagnosed_by_user_id: ID de quem diagnosticou (Nanda)
+        diagnosed_by_user_id: ID de quem diagnosticou (CRM)
         deep_pains: Lista de dores profundas identificadas
         real_barriers: Lista de barreiras reais (tempo, dinheiro, etc)
         emotional_profile: Perfil emocional (ansioso, decidido, inseguro, etc)

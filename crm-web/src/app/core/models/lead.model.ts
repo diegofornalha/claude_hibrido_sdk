@@ -1,5 +1,5 @@
 /**
- * Modelos de Lead/CRM - Nanda
+ * Modelos de Lead/CRM - CRM
  * Interfaces e tipos para gerenciamento de leads no funil de vendas
  */
 

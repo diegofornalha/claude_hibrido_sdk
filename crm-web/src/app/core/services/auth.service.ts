@@ -125,14 +125,11 @@ export class AuthService {
         if (deprecatedKey) {
           localStorage.removeItem('nanda_api_key');
           if (!environment.production) {
-            console.log('[Nanda] Migration: Removed deprecated "nanda_api_key" from localStorage');
+            console.log('[CRM] Migration: Removed deprecated "nanda_api_key" from localStorage');
           }
         }
       } catch (error) {
         // Silently fail if localStorage is blocked/unavailable
-        if (!environment.production) {
-          console.warn('[Nanda] Migration: Failed to clean deprecated keys', error);
-        }
       }
     }
   }
@@ -199,7 +196,7 @@ export class AuthService {
         this.performTokenRefresh();
       }
     } catch (error) {
-      console.error('[Auth] Erro ao agendar refresh:', error);
+      // Silent fail
     }
   }
 
@@ -214,7 +211,6 @@ export class AuthService {
     const refreshToken = this.refreshToken();
 
     if (!refreshToken) {
-      console.warn('[Auth] Refresh token não disponível');
       this.logout();
       return;
     }
@@ -237,7 +233,6 @@ export class AuthService {
         }
       }),
       catchError(error => {
-        console.error('[Auth] Erro ao renovar token:', error);
         this.logout();
         return throwError(() => error);
       })
@@ -292,21 +287,16 @@ export class AuthService {
   }
 
   login(data: LoginRequest): Observable<ApiResponse<AuthResponse>> {
-    console.log('[Auth] Login iniciado para:', data.email);
     this.loading.set(true);
     return this.http.post<AuthResponse>(`${this.baseUrl}/api/auth/login`, data).pipe(
       tap(response => {
-        console.log('[Auth] Login response recebida:', response);
         this.loading.set(false);
         if (response.token) {
-          console.log('[Auth] Token recebido, salvando...');
           this.saveToStorage(response);
-          console.log('[Auth] Storage salvo, userRole:', this.userRole());
         }
       }),
       map(response => ({ success: !!response.token, data: response })),
       catchError(error => {
-        console.error('[Auth] Erro no login:', error);
         this.loading.set(false);
         return throwError(() => error);
       })
@@ -353,7 +343,7 @@ export class AuthService {
       this.http.post(`${this.baseUrl}/api/auth/logout`, {
         refresh_token: refreshToken
       }).subscribe({
-        error: (err) => console.error('[Auth] Erro ao revogar token:', err)
+        error: (err) => {} // Silent fail
       });
     }
 

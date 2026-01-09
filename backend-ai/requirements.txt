@@ -16,8 +16,8 @@ slowapi==0.1.9
 # bedrock-agentcore==1.1.1
 # bedrock-agentcore-starter-toolkit==0.2.2
 
-# Database - SQLite (atual)
-sqlite-connector-python==9.1.0
+# Database - SQLite (atual - built-in no Python)
+# sqlite-connector-python==9.1.0  # Pacote não existe, SQLite já vem com Python
 DBUtils==3.1.0
 
 # Database - Turso (migração em andamento)

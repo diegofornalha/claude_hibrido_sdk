@@ -165,7 +165,6 @@ export class NivelService {
         this._configsLoaded.set(true);
       }),
       catchError(error => {
-        console.warn('Erro ao carregar configs de níveis, usando fallback:', error);
         this._configsLoaded.set(true);
         return of(LEVEL_CONFIGS_FALLBACK);
       })

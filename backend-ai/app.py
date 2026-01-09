@@ -31,19 +31,24 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 # from fastapi_mcp import FastApiMCP  # Apenas necessário para MCP server
 
-# Importar routers
-from routes.chat_routes import router as chat_router  # WebSocket chat habilitado!
-from routes.admin_config_routes import router as admin_config_router, user_config_router  # Admin config + User config
-from routes.webhook_routes import router as webhook_router  # Webhooks para automação CRM
-from routes.lead_conversion_routes import router as lead_conversion_router  # Conversão lead → mentorado
-from routes.config_routes import router as config_router  # White Label config
-from routes.user_routes import router as user_router  # User management + Evolution
+# Importar routers - COMENTADO: módulos não existem
+# from routes.chat_routes import router as chat_router  # WebSocket chat habilitado!
+# from routes.admin_config_routes import router as admin_config_router, user_config_router  # Admin config + User config
+# from routes.webhook_routes import router as webhook_router  # Webhooks para automação CRM
+# from routes.lead_conversion_routes import router as lead_conversion_router  # Conversão lead → mentorado
+# from routes.config_routes import router as config_router  # White Label config
+# from routes.user_routes import router as user_router  # User management + Evolution
 
-# Importar ConfigManager para gerenciamento dinâmico de agentes/ferramentas
-from core.config_manager import init_config_manager
+# Importar ConfigManager para gerenciamento dinâmico de agentes/ferramentas - COMENTADO: módulo não existe
+# from core.config_manager import init_config_manager
 
-# Importar sistema de roles e permissões
-from core.roles import require_role, get_user_role
+# Importar sistema de roles e permissões - COMENTADO: módulo não existe
+# from core.roles import require_role, get_user_role
+
+# Stub function para get_user_role (temporário)
+def get_user_role(user_id: int) -> str:
+    """Stub temporário - retorna role padrão"""
+    return "mentorado"
 
 # Load environment variables
 load_dotenv(override=True)
@@ -133,7 +138,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # mcp = FastApiMCP(
 #     app,
 #     name="crm-api",
-#     description="Nanda - Sistema de diagnostico de resíduos com IA para o Brasil"
+#     description="CRM - Sistema de diagnostico de resíduos com IA para o Brasil"
 # )
 # mcp.mount()
 # logger.info("MCP Server mounted at /mcp")
@@ -1513,18 +1518,18 @@ async def health_check():
             "version": "2.0.0"
         }
 
-# Include routers
-app.include_router(chat_router)  # WebSocket chat com RAG habilitado!
-app.include_router(admin_config_router)  # Admin config de agentes/ferramentas
-app.include_router(user_config_router)  # User config (LLM para qualquer usuário autenticado)
-app.include_router(webhook_router)  # Webhooks para automação CRM
-app.include_router(lead_conversion_router)  # Conversão lead → mentorado
-app.include_router(config_router)  # White Label config (público + admin)
-app.include_router(user_router)  # User management + Evolution flywheel
+# Include routers - COMENTADO: routers não existem
+# app.include_router(chat_router)  # WebSocket chat com RAG habilitado!
+# app.include_router(admin_config_router)  # Admin config de agentes/ferramentas
+# app.include_router(user_config_router)  # User config (LLM para qualquer usuário autenticado)
+# app.include_router(webhook_router)  # Webhooks para automação CRM
+# app.include_router(lead_conversion_router)  # Conversão lead → mentorado
+# app.include_router(config_router)  # White Label config (público + admin)
+# app.include_router(user_router)  # User management + Evolution flywheel
 
-# Inicializar ConfigManager para gerenciamento dinâmico
-init_config_manager(get_db_connection)
-logger.info("ConfigManager initialized - dynamic agent/tool management enabled")
+# Inicializar ConfigManager para gerenciamento dinâmico - COMENTADO: módulo não existe
+# init_config_manager(get_db_connection)
+# logger.info("ConfigManager initialized - dynamic agent/tool management enabled")
 
 # Authentication routes
 @app.get("/api/auth/check-existing", response_model=dict)
@@ -4307,7 +4312,7 @@ async def get_assessment_result(
 
 
 # =====================================================
-# ENDPOINTS DE ADMIN (Nanda)
+# ENDPOINTS DE ADMIN (CRM)
 # =====================================================
 
 @app.get("/api/admin/mentors", response_model=dict)

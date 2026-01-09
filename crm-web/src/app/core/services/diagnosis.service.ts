@@ -163,7 +163,6 @@ export class DiagnosisService {
         this._loadingAssessments.set(true);
       }
     } catch (error) {
-      console.error('Erro ao carregar cache de assessments:', error);
       this._loadingAssessments.set(true);
     }
   }
@@ -178,7 +177,7 @@ export class DiagnosisService {
         timestamp: Date.now()
       }));
     } catch (error) {
-      console.error('Erro ao salvar cache de assessments:', error);
+      // Silent fail
     }
   }
 
@@ -203,7 +202,6 @@ export class DiagnosisService {
         this._loadingChatSessions.set(true);
       }
     } catch (error) {
-      console.error('Erro ao carregar cache de chat sessions:', error);
       this._loadingChatSessions.set(true);
     }
   }
@@ -218,7 +216,7 @@ export class DiagnosisService {
         timestamp: Date.now()
       }));
     } catch (error) {
-      console.error('Erro ao salvar cache de chat sessions:', error);
+      // Silent fail
     }
   }
 

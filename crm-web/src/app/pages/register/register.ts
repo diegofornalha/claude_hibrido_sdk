@@ -13,7 +13,7 @@ import { CommonModule } from '@angular/common';
       <div class="w-full max-w-md">
         <div class="bg-white rounded-2xl shadow-xl p-8">
           <div class="text-center mb-8">
-            <h1 class="text-3xl font-bold text-emerald-600 mb-2">Nanda</h1>
+            <h1 class="text-3xl font-bold text-emerald-600 mb-2">CRM</h1>
             <p class="text-gray-500">Crie sua conta</p>
           </div>
 

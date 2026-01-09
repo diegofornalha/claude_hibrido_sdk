@@ -231,7 +231,6 @@ export class ConfigService {
         this._loading.set(true);
       }
     } catch (error) {
-      console.error('Erro ao carregar cache:', error);
       this._loading.set(true);
     }
   }
@@ -247,7 +246,7 @@ export class ConfigService {
         timestamp: Date.now()
       }));
     } catch (error) {
-      console.error('Erro ao salvar cache:', error);
+      // Silent fail
     }
   }
 

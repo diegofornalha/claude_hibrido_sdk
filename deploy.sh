@@ -1,10 +1,10 @@
 #!/bin/bash
-# Script de Deploy Automatizado - Nanda Backend
+# Script de Deploy Automatizado - CRM Backend
 # Execute no servidor de produção: bash deploy.sh
 
 set -e  # Parar em caso de erro
 
-echo "🚀 Iniciando deploy do Nanda Backend..."
+echo "🚀 Iniciando deploy do CRM Backend..."
 
 # Cores para output
 GREEN='\033[0;32m'
@@ -84,4 +84,4 @@ echo ""
 echo -e "${GREEN}✅ Correções aplicadas:${NC}"
 echo "  1. Card 'Lead cadastrado' agora aparece no topo"
 echo "  2. Ferramenta get_session_user_info habilitada"
-echo "  3. Nanda agora consegue buscar nome do usuário"
+echo "  3. CRM agora consegue buscar nome do usuário"

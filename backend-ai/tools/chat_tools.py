@@ -1,7 +1,7 @@
 """
 Chat Tools - Ferramentas para gerenciar histórico de chat
 
-Permite que a Nanda busque sessões, mensagens e dados de usuários.
+Permite que a CRM busque sessões, mensagens e dados de usuários.
 """
 
 import json

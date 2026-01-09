@@ -89,7 +89,6 @@ export class LeadService {
   }
 
   private handleError(error: unknown): Observable<never> {
-    console.error('LeadService error:', error);
     return throwError(() => error);
   }
 }

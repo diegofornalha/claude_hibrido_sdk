@@ -63,7 +63,7 @@ import { SkeletonComponent } from '../../../core/components/skeleton.component';
               <div class="p-12 text-center text-gray-500">
                 <div class="text-5xl mb-4">📊</div>
                 <p class="text-lg">Nenhum diagnóstico encontrado</p>
-                <p class="text-sm mt-2">Os diagnósticos aparecerão aqui quando os mentorados completarem a avaliação com a Nanda.</p>
+                <p class="text-sm mt-2">Os diagnósticos aparecerão aqui quando os mentorados completarem a avaliação com a CRM.</p>
               </div>
             } @else {
               <table class="min-w-full divide-y divide-gray-200">

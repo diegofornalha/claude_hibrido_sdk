@@ -96,7 +96,6 @@ export class AdminService {
         this._loadingMentors.set(true);
       }
     } catch (error) {
-      console.error('Erro ao carregar cache de mentors:', error);
       this._loadingMentors.set(true);
     }
   }
@@ -111,7 +110,7 @@ export class AdminService {
         timestamp: Date.now()
       }));
     } catch (error) {
-      console.error('Erro ao salvar cache de mentors:', error);
+      // Silent fail
     }
   }
 
@@ -168,7 +167,6 @@ export class AdminService {
         this._loadingMentorados.set(true);
       }
     } catch (error) {
-      console.error('Erro ao carregar cache de mentorados:', error);
       this._loadingMentorados.set(true);
     }
   }
@@ -183,7 +181,7 @@ export class AdminService {
         timestamp: Date.now()
       }));
     } catch (error) {
-      console.error('Erro ao salvar cache de mentorados:', error);
+      // Silent fail
     }
   }
 

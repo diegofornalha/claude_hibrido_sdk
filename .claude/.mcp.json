@@ -2,15 +2,15 @@
   "mcpServers": {
     "sqlite-crm": {
       "type": "stdio",
-      "command": "/home/diagnostico/diagnostico_nanda/backend-ai/venv/bin/python3",
+      "command": "../backend-ai/venv/bin/python3",
       "args": [
-        "/home/diagnostico/diagnostico_nanda/backend-ai/mcp_SQLite_local.py"
+        "../backend-ai/mcp_SQLite_local.py"
       ],
       "env": {
         "SQLite_HOST": "localhost",
-        "SQLite_DATABASE": "db_nanda",
+        "SQLite_DATABASE": "db_data",
         "SQLite_USER": "root",
-        "SQLite_PASSWORD": "N4nd4M4c@321",
+        "SQLite_PASSWORD": "data@321",
         "SQLite_PORT": "3306"
       }
     }

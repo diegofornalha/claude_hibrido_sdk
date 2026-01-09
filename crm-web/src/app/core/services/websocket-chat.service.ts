@@ -101,7 +101,6 @@ export class WebSocketChatService {
   connect(): void {
     const token = this.authService.getToken();
     if (!token) {
-      console.error('[WebSocketChat] No token available');
       this.error.set('Não autenticado. Faça login novamente.');
       return;
     }
@@ -111,12 +110,9 @@ export class WebSocketChatService {
     const wsHost = environment.apiUrl.replace(/^https?:\/\//, '');
     const wsUrl = `${wsProtocol}://${wsHost}/api/chat/ws?token=${token}`;
 
-    console.log('[WebSocketChat] Connecting to:', wsUrl);
-
     this.ws = new WebSocket(wsUrl);
 
     this.ws.onopen = () => {
-      console.log('[WebSocketChat] Connected');
       this.isConnected.set(true);
       this.error.set(null);
       this.reconnectAttempts = 0;
@@ -134,23 +130,20 @@ export class WebSocketChatService {
         const data: WebSocketMessage = JSON.parse(event.data);
         this.handleMessage(data);
       } catch (e) {
-        console.error('[WebSocketChat] Error parsing message:', e);
+        // Error parsing WebSocket message
       }
     };
 
     this.ws.onerror = (error) => {
-      console.error('[WebSocketChat] WebSocket error:', error);
       this.error.set('Erro de conexão com o servidor');
     };
 
     this.ws.onclose = (event) => {
-      console.log('[WebSocketChat] Closed:', event.code, event.reason);
       this.isConnected.set(false);
       this.isTyping.set(false);
 
       // Não reconectar se foi fechamento normal (código 1000) ou unauthorized (4001)
       if (event.code === 1000 || event.code === 4001) {
-        console.log('[WebSocketChat] Connection closed normally or unauthorized');
         if (event.code === 4001) {
           this.error.set('Sessão expirada. Faça login novamente.');
         }
@@ -167,13 +160,11 @@ export class WebSocketChatService {
    */
   private attemptReconnect(): void {
     if (this.reconnectAttempts >= this.MAX_RECONNECT_ATTEMPTS) {
-      console.error('[WebSocketChat] Max reconnect attempts reached');
       this.error.set('Não foi possível reconectar. Atualize a página.');
       return;
     }
 
     this.reconnectAttempts++;
-    console.log(`[WebSocketChat] Reconnecting... attempt ${this.reconnectAttempts}/${this.MAX_RECONNECT_ATTEMPTS}`);
 
     this.reconnectTimeout = window.setTimeout(() => {
       this.connect();
@@ -187,8 +178,6 @@ export class WebSocketChatService {
    * Handler para mensagens do WebSocket
    */
   private handleMessage(data: WebSocketMessage): void {
-    console.log('[WebSocketChat] Message:', data.type, data);
-
     switch (data.type) {
       case 'user_message_saved':
         this.conversationId.set(data.conversation_id ?? null);
@@ -231,7 +220,6 @@ export class WebSocketChatService {
       case 'thinking':
         // Optionally show in debug panel
         this.thinkingContent.update(t => t + (data.content ?? ''));
-        console.log('[WebSocketChat] Thinking:', data.content);
         break;
 
       case 'tool_start': {
@@ -278,11 +266,6 @@ export class WebSocketChatService {
 
       case 'result':
         this.isTyping.set(false);
-        console.log('[WebSocketChat] Conversation complete:', {
-          cost: data.cost,
-          duration_ms: data.duration_ms,
-          num_turns: data.num_turns
-        });
 
         // Limpar thinking content
         this.thinkingContent.set('');
@@ -294,7 +277,6 @@ export class WebSocketChatService {
       case 'error':
         this.isTyping.set(false);
         this.error.set(data.error || 'Erro desconhecido');
-        console.error('[WebSocketChat] Error:', data.error);
 
         // Limpar ferramentas em caso de erro
         this.activeTools.set(new Map());
@@ -313,7 +295,6 @@ export class WebSocketChatService {
    */
   sendMessage(content: string): void {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      console.error('[WebSocketChat] WebSocket not connected');
       this.error.set('Não conectado. Tentando reconectar...');
       this.connect();
       return;
@@ -337,7 +318,6 @@ export class WebSocketChatService {
       mode: this.basePath()  // 'chat' ou 'diagnostico'
     };
 
-    console.log('[WebSocketChat] Sending message:', payload);
     this.ws.send(JSON.stringify(payload));
   }
 
@@ -386,7 +366,6 @@ export class WebSocketChatService {
     }
 
     if (this.ws) {
-      console.log('[WebSocketChat] Disconnecting...');
       this.ws.close(1000, 'User disconnected'); // 1000 = normal closure
       this.ws = null;
     }
@@ -695,7 +674,6 @@ export class WebSocketChatService {
         this.isLoadingSessions.set(false);
       },
       error: (err) => {
-        console.error('[WebSocketChat] Error loading sessions:', err);
         this.isLoadingSessions.set(false);
       }
     });
@@ -741,7 +719,6 @@ export class WebSocketChatService {
         this.isLoadingSessions.set(false);
       },
       error: (err) => {
-        console.error('[WebSocketChat] Error loading session:', err);
         this.error.set('Erro ao carregar conversa');
         this.isLoadingSessions.set(false);
       }
@@ -769,7 +746,6 @@ export class WebSocketChatService {
         }
       },
       error: (err) => {
-        console.error('[WebSocketChat] Error deleting session:', err);
         this.error.set('Erro ao apagar conversa');
       }
     });

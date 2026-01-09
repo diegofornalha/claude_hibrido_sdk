@@ -128,7 +128,7 @@ import { SkeletonComponent } from '../../../core/components/skeleton.component';
               <a
                 routerLink="/chat"
                 class="p-3 md:p-4 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition text-2xl md:text-3xl"
-                title="Conversar com Nanda"
+                title="Conversar com CRM"
               >
                 💬
               </a>

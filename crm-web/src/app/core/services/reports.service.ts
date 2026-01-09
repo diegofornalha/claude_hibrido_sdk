@@ -221,13 +221,10 @@ export class ReportsService {
     this.loading.set(true);
     return this.http.get<DashboardStatistics>(`${environment.apiUrl}/api/dashboard/statistics`).pipe(
       tap(response => {
-        console.log('Dashboard API Response:', response);
         this.loading.set(false);
         // Backend retorna direto: {status, user_stats, waste_distribution, ...}
         if (response && response.status === 'success') {
-          console.log('Setting statistics:', response);
           this.statistics.set(response);
-          console.log('Statistics signal value:', this.statistics());
         }
       })
     );

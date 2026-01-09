@@ -15,14 +15,14 @@ logger = logging.getLogger(__name__)
 
 @tool(
     "execute_sql_query",
-    "Execute read-only SQL query on Nanda database. Returns up to 100 rows.",
+    "Execute read-only SQL query on CRM database. Returns up to 100 rows.",
     {
         "query": str
     }
 )
 async def execute_sql_query(args: Dict[str, Any]) -> Dict:
     """
-    Executa query SQL READ-ONLY no banco Nanda
+    Executa query SQL READ-ONLY no banco CRM
 
     SEGURANÇA:
     - Apenas SELECT queries permitidas
