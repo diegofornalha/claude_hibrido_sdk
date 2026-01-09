@@ -1,0 +1,7 @@
+{
+  "model": "opus",
+  "env": {
+    "LLM_PROVIDER": "claude",
+    "LLM_MODEL": "claude-sonnet-4-5"
+  }
+}
